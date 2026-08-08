@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ClaimTeamForm } from "@/components/ClaimTeamForm";
+import { CopyInviteLink } from "@/components/CopyInviteLink";
 import { prisma } from "@/lib/prisma";
 import { getMembership, getSession } from "@/lib/session";
 
@@ -112,19 +113,9 @@ export default async function LeagueHomePage({ params }: Props) {
           {isAdmin ? (
             <>
               <p className="muted" style={{ margin: 0 }}>
-                Share this invite link or code (not the admin code):
+                Copy the full link and text it to your league (not the admin code):
               </p>
-              <code
-                style={{
-                  display: "block",
-                  padding: "0.75rem",
-                  background: "var(--bg0)",
-                  borderRadius: "0.55rem",
-                  wordBreak: "break-all",
-                }}
-              >
-                /join/{league.inviteCode}
-              </code>
+              <CopyInviteLink inviteCode={league.inviteCode} />
               <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
                 Invite code: <strong>{league.inviteCode}</strong>
               </p>

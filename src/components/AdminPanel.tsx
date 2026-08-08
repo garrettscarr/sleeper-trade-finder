@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { CopyInviteLink } from "@/components/CopyInviteLink";
 
 export function AdminPanel({
   leagueId,
@@ -136,9 +137,10 @@ export function AdminPanel({
       </div>
 
       <div className="panel stack">
-        <h2 style={{ margin: 0 }}>Codes</h2>
+        <h2 style={{ margin: 0 }}>Invite link</h2>
+        <CopyInviteLink inviteCode={inviteCode} />
         <p className="muted" style={{ margin: 0 }}>
-          Invite (share): <code>{inviteCode}</code> · link <code>/join/{inviteCode}</code>
+          Invite code: <code>{inviteCode}</code>
         </p>
         <p className="muted" style={{ margin: 0 }}>
           Admin (private): <code>{adminCode}</code>

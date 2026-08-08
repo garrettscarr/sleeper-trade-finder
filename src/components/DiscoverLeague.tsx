@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
+import { CopyInviteLink } from "@/components/CopyInviteLink";
 import {
   getDeviceProof,
   getSavedCodes,
@@ -287,10 +288,8 @@ export function DiscoverLeague() {
             <code style={{ fontSize: "1.1rem" }}>{createdCodes.inviteCode}</code>
           </div>
           <div>
-            <div className="label">Invite link</div>
-            <code style={{ fontSize: "0.95rem", wordBreak: "break-all" }}>
-              /join/{createdCodes.inviteCode}
-            </code>
+            <div className="label">Invite link (text this to managers)</div>
+            <CopyInviteLink inviteCode={createdCodes.inviteCode} />
           </div>
           <div>
             <div className="label">Admin code (private)</div>
