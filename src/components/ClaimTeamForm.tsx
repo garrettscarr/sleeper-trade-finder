@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
+import { setDeviceProof, setSavedUsername } from "@/lib/device-storage";
 
 type TeamOption = { id: string; label: string; claimed: boolean };
 
@@ -34,6 +35,9 @@ export function ClaimTeamForm({
       setError(data.error || "Could not reconnect");
       return;
     }
+    if (data.deviceProof) setDeviceProof(data.deviceProof);
+    const name = String(form.get("sleeperUsername") || "").trim();
+    if (name) setSavedUsername(name);
     router.refresh();
     router.push(`/leagues/${leagueId}/values`);
   }
@@ -58,6 +62,9 @@ export function ClaimTeamForm({
       setError(data.error || "Claim failed");
       return;
     }
+    if (data.deviceProof) setDeviceProof(data.deviceProof);
+    const name = String(form.get("claimUsername") || "").trim();
+    if (name) setSavedUsername(name);
     router.refresh();
     router.push(`/leagues/${leagueId}/values`);
   }

@@ -5,7 +5,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Sleeper Trade Finder",
   description:
-    "League trade finder that matches deals using your league mates' personal values, seeded from a community baseline. Invite-code access — no passwords.",
+    "League trade finder that matches deals using your league mates' personal values. Invite codes unlock a device — no accounts or passwords.",
 };
 
 export default function RootLayout({

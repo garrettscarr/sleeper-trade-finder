@@ -2,6 +2,14 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
+import {
+  getDeviceProof,
+  getSavedCodes,
+  saveLeagueCodes,
+  setDeviceProof,
+  setSavedUsername,
+  type SavedLeagueCodes,
+} from "@/lib/device-storage";
 
 type SleeperLeagueOption = {
   sleeperLeagueId: string;
@@ -10,25 +18,7 @@ type SleeperLeagueOption = {
   totalRosters: number;
 };
 
-type CodesPanel = {
-  inviteCode: string;
-  adminCode: string;
-  leagueId: string;
-  name: string;
-  recovered?: boolean;
-};
-
-const CODES_KEY = "stf_league_codes";
-
-function saveCodesLocally(codes: CodesPanel) {
-  try {
-    const prev = JSON.parse(localStorage.getItem(CODES_KEY) || "[]") as CodesPanel[];
-    const next = [codes, ...prev.filter((c) => c.leagueId !== codes.leagueId)].slice(0, 8);
-    localStorage.setItem(CODES_KEY, JSON.stringify(next));
-  } catch {
-    // ignore storage failures
-  }
-}
+type CodesPanel = SavedLeagueCodes & { recovered?: boolean };
 
 export function DiscoverLeague() {
   const router = useRouter();
@@ -40,15 +30,12 @@ export function DiscoverLeague() {
   const [season, setSeason] = useState("");
   const [username, setUsername] = useState("");
   const [createdCodes, setCreatedCodes] = useState<CodesPanel | null>(null);
-  const [savedCodes, setSavedCodes] = useState<CodesPanel[]>([]);
+  const [savedCodes, setSavedCodes] = useState<SavedLeagueCodes[]>([]);
+  const [pendingLeagueId, setPendingLeagueId] = useState<string | null>(null);
+  const [accessCode, setAccessCode] = useState("");
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(CODES_KEY);
-      if (raw) setSavedCodes(JSON.parse(raw) as CodesPanel[]);
-    } catch {
-      // ignore
-    }
+    setSavedCodes(getSavedCodes());
   }, []);
 
   async function lookupUsername(e: FormEvent<HTMLFormElement>) {
@@ -58,9 +45,11 @@ export function DiscoverLeague() {
     setStatus("");
     setLeagues([]);
     setCreatedCodes(null);
+    setPendingLeagueId(null);
     const form = new FormData(e.currentTarget);
     const name = String(form.get("username")).trim();
     setUsername(name);
+    setSavedUsername(name);
     const res = await fetch("/api/sleeper/leagues", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -79,7 +68,11 @@ export function DiscoverLeague() {
     }
   }
 
-  async function importLeague(sleeperLeagueId: string, sleeperUsername?: string) {
+  async function importLeague(
+    sleeperLeagueId: string,
+    sleeperUsername?: string,
+    code?: string,
+  ) {
     setLoading(true);
     setError("");
     setStatus("");
@@ -90,12 +83,22 @@ export function DiscoverLeague() {
       body: JSON.stringify({
         sleeperLeagueId,
         sleeperUsername: sleeperUsername || undefined,
+        accessCode: code || undefined,
+        deviceProof: getDeviceProof() || undefined,
       }),
     });
     const data = await res.json();
     setLoading(false);
     if (!res.ok) {
       setError(data.error || "Import failed");
+      return;
+    }
+
+    if (data.deviceProof) setDeviceProof(data.deviceProof);
+
+    if (data.needsCode) {
+      setPendingLeagueId(sleeperLeagueId);
+      setStatus(data.message);
       return;
     }
 
@@ -108,18 +111,23 @@ export function DiscoverLeague() {
         recovered: Boolean(data.recovered),
       };
       setCreatedCodes(panel);
-      saveCodesLocally(panel);
-      setSavedCodes((prev) => [panel, ...prev.filter((c) => c.leagueId !== panel.leagueId)]);
-      setStatus(data.message || "");
+      saveLeagueCodes(panel);
+      setSavedCodes(getSavedCodes());
+      setPendingLeagueId(null);
+      setStatus(data.message || "This device will remember your admin access.");
+      return;
+    }
+
+    if (data.recovered && data.league?.id) {
+      setPendingLeagueId(null);
+      setStatus(data.message || "Unlocked on this device.");
+      router.push(`/leagues/${data.league.id}`);
+      router.refresh();
       return;
     }
 
     if (data.alreadyExists) {
-      setStatus(
-        data.message ||
-          "League already set up. Use Find my leagues with your Sleeper username to unlock, or enter a code on Join.",
-      );
-      return;
+      setStatus(data.message || "League already set up.");
     }
   }
 
@@ -128,7 +136,14 @@ export function DiscoverLeague() {
     const form = new FormData(e.currentTarget);
     const id = String(form.get("sleeperLeagueId")).trim();
     const name = String(form.get("sleeperUsername") || "").trim() || username;
-    await importLeague(id, name || undefined);
+    const code = String(form.get("accessCode") || "").trim();
+    await importLeague(id, name || undefined, code || undefined);
+  }
+
+  async function submitPendingCode(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!pendingLeagueId) return;
+    await importLeague(pendingLeagueId, username || undefined, accessCode.trim());
   }
 
   return (
@@ -165,10 +180,10 @@ export function DiscoverLeague() {
             />
           </div>
           <p className="muted" style={{ margin: 0, fontSize: "0.9rem" }}>
-            Uses Sleeper&apos;s public API only — never asks for your Sleeper password.
-            Lists leagues for the current NFL season{season ? ` (${season})` : ""}. If the
-            league is already set up, selecting it unlocks this browser and shows your codes
-            again.
+            Public Sleeper lookup only. First import unlocks you as commissioner on this
+            device. If the league already exists, you&apos;ll enter the admin/invite code
+            once (unless this phone already remembers you).
+            {season ? ` Season ${season}.` : ""}
           </p>
           <button className="btn" disabled={loading} type="submit">
             {loading ? "Looking up…" : "Find my leagues"}
@@ -190,7 +205,7 @@ export function DiscoverLeague() {
           </div>
           <div>
             <label className="label" htmlFor="sleeperUsername">
-              Your Sleeper username (needed to unlock if already set up)
+              Your Sleeper username
             </label>
             <input
               className="input"
@@ -200,15 +215,26 @@ export function DiscoverLeague() {
               defaultValue={username}
             />
           </div>
+          <div>
+            <label className="label" htmlFor="accessCode">
+              Invite/admin code (only if already set up)
+            </label>
+            <input
+              className="input"
+              id="accessCode"
+              name="accessCode"
+              placeholder="abcd-efgh"
+            />
+          </div>
           <button className="btn" disabled={loading} type="submit">
-            {loading ? "Importing…" : "Import / unlock league"}
+            {loading ? "Working…" : "Import / unlock league"}
           </button>
         </form>
       )}
 
       {leagues.length > 0 ? (
         <div className="stack">
-          <h3 style={{ margin: 0 }}>Select a league to set up or unlock</h3>
+          <h3 style={{ margin: 0 }}>Select a league</h3>
           {leagues.map((l) => (
             <button
               key={l.sleeperLeagueId}
@@ -227,21 +253,47 @@ export function DiscoverLeague() {
         </div>
       ) : null}
 
+      {pendingLeagueId ? (
+        <form className="panel stack" onSubmit={submitPendingCode}>
+          <h3 style={{ margin: 0 }}>Enter code once</h3>
+          <p className="muted" style={{ margin: 0 }}>
+            This league is already set up. Paste the invite or admin code — then this
+            device remembers you (no account).
+          </p>
+          <input
+            className="input"
+            value={accessCode}
+            onChange={(e) => setAccessCode(e.target.value)}
+            placeholder="abcd-efgh"
+            required
+          />
+          <button className="btn" disabled={loading} type="submit">
+            {loading ? "Unlocking…" : "Unlock on this device"}
+          </button>
+        </form>
+      ) : null}
+
       {createdCodes ? (
         <div className="panel stack">
           <h3 style={{ margin: 0 }}>
             {createdCodes.recovered ? "Unlocked" : "League ready"}: {createdCodes.name}
           </h3>
           <p className="success" style={{ margin: 0 }}>
-            Save these codes — screenshot or copy them. They unlock the league on any phone
-            (no passwords). Also saved in this browser.
+            Screenshot these. Share the invite link with managers. This phone is now
+            remembered as admin — you shouldn&apos;t need the admin code every visit.
           </p>
           <div>
-            <div className="label">Invite code (share with managers)</div>
+            <div className="label">Invite code (share)</div>
             <code style={{ fontSize: "1.1rem" }}>{createdCodes.inviteCode}</code>
           </div>
           <div>
-            <div className="label">Admin code (commissioner only — keep private)</div>
+            <div className="label">Invite link</div>
+            <code style={{ fontSize: "0.95rem", wordBreak: "break-all" }}>
+              /join/{createdCodes.inviteCode}
+            </code>
+          </div>
+          <div>
+            <div className="label">Admin code (private)</div>
             <code style={{ fontSize: "1.1rem" }}>{createdCodes.adminCode}</code>
           </div>
           <button
@@ -259,15 +311,18 @@ export function DiscoverLeague() {
 
       {savedCodes.length > 0 && !createdCodes ? (
         <div className="panel stack">
-          <h3 style={{ margin: 0 }}>Codes saved on this device</h3>
-          <p className="muted" style={{ margin: 0 }}>
-            Use Join with a code below if your session was cleared.
-          </p>
+          <h3 style={{ margin: 0 }}>Codes on this device</h3>
           {savedCodes.map((c) => (
             <div key={c.leagueId}>
               <strong>{c.name}</strong>
               <div className="muted" style={{ fontSize: "0.9rem" }}>
-                Invite <code>{c.inviteCode}</code> · Admin <code>{c.adminCode}</code>
+                Invite <code>{c.inviteCode}</code>
+                {c.adminCode ? (
+                  <>
+                    {" "}
+                    · Admin <code>{c.adminCode}</code>
+                  </>
+                ) : null}
               </div>
             </div>
           ))}

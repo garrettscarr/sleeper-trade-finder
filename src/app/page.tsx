@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ContinueOnDevice } from "@/components/ContinueOnDevice";
 import { DiscoverLeague } from "@/components/DiscoverLeague";
 import { EnterCodeForm } from "@/components/EnterCodeForm";
 import { getSession } from "@/lib/session";
@@ -11,12 +12,12 @@ export default async function HomePage() {
       <div className="hero" style={{ paddingBottom: "1rem" }}>
         <div>
           <p className="pill fair" style={{ marginBottom: "1rem" }}>
-            No emails · No passwords · Invite codes only
+            No accounts · Device remembers you · Codes only when needed
           </p>
           <h1>Trade Finder for Sleeper leagues</h1>
           <p>
-            Look up leagues with a Sleeper username or league ID (public Sleeper data only).
-            Managers join with an invite code — never by creating an account.
+            Unlock once with an invite link or code. This browser keeps you signed in — no
+            email or password. New phone? Paste the code once again.
           </p>
           {session.memberships.length > 0 ? (
             <div style={{ marginTop: "1.25rem" }}>
@@ -26,17 +27,21 @@ export default async function HomePage() {
             </div>
           ) : null}
         </div>
-        <div className="panel stack">
-          <h2 style={{ margin: 0 }}>Already have a code?</h2>
-          <EnterCodeForm />
-        </div>
+      </div>
+
+      <ContinueOnDevice />
+
+      <div className="panel stack">
+        <h2 style={{ margin: 0 }}>Have a code? (first time on this phone)</h2>
+        <EnterCodeForm />
       </div>
 
       <div className="panel">
-        <h2 style={{ marginTop: 0 }}>Set up a league</h2>
+        <h2 style={{ marginTop: 0 }}>Commissioner — set up a league</h2>
         <p className="muted">
-          Commissioner flow: find the league, import it, then share the <strong>invite code</strong>{" "}
-          with managers. Keep the <strong>admin code</strong> private for sync/baseline tools.
+          Import from Sleeper, then share the <strong>invite link</strong> with managers.
+          Keep the <strong>admin code</strong> private. This device will remember your
+          admin access after setup.
         </p>
         <DiscoverLeague />
       </div>

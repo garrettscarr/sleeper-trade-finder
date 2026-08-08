@@ -106,8 +106,30 @@ export async function removeMembership(leagueId: string) {
   });
 }
 
+/** Legacy hex codes (still accepted). Prefer randomAccessCode for new leagues. */
 export function randomCode(bytes = 6) {
   const arr = new Uint8Array(bytes);
   crypto.getRandomValues(arr);
   return Array.from(arr, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/** Short invite/admin codes: `abcd-efgh` (32-char alphabet, ~40 bits). */
+export function randomAccessCode(length = 8): string {
+  const alphabet = "23456789abcdefghjkmnpqrstuvwxyz";
+  const arr = new Uint8Array(length);
+  crypto.getRandomValues(arr);
+  let out = "";
+  for (const b of arr) out += alphabet[b % alphabet.length];
+  if (length >= 8) return `${out.slice(0, 4)}-${out.slice(4, 8)}`;
+  return out;
+}
+
+/** Normalize user-entered codes for lookup (strip dashes/spaces). */
+export function normalizeAccessCode(code: string): string {
+  return code.trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/** DB may store dashed or undashed — compare normalized. */
+export function codesMatch(stored: string, entered: string): boolean {
+  return normalizeAccessCode(stored) === normalizeAccessCode(entered);
 }

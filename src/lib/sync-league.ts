@@ -1,5 +1,5 @@
 import { prisma } from "./prisma";
-import { randomCode } from "./session";
+import { randomAccessCode } from "./session";
 import {
   defaultPickValue,
   detectScoringType,
@@ -95,8 +95,8 @@ export async function syncLeagueFromSleeper(opts: {
           name: leagueData.name,
           season: String(leagueData.season),
           scoringType,
-          inviteCode: randomCode(8),
-          adminCode: randomCode(8),
+          inviteCode: randomAccessCode(8),
+          adminCode: randomAccessCode(8),
           lastSyncedAt: new Date(),
         },
       });

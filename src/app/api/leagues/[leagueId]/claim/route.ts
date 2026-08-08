@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireLeagueAccess } from "@/lib/access";
+import { jsonWithMembership } from "@/lib/auth-response";
 import { restoreClaimForSleeperUsername } from "@/lib/claim-restore";
 import { prisma } from "@/lib/prisma";
-import { randomCode, upsertMembershipOnResponse } from "@/lib/session";
+import { randomCode } from "@/lib/session";
 import { fetchUserByUsername } from "@/lib/sleeper";
 import { seedPersonalValuesForTeam } from "@/lib/sync-league";
 
@@ -61,14 +62,16 @@ export async function POST(req: Request, { params }: Params) {
 
   if (ownerOverride && team.claimToken) {
     await seedPersonalValuesForTeam(leagueId, team.id);
-    const res = NextResponse.json({ team });
-    await upsertMembershipOnResponse(res, {
-      leagueId,
-      role: membership.role,
-      teamId: team.id,
-      claimToken: team.claimToken,
-    });
-    return res;
+    return jsonWithMembership(
+      { team },
+      {
+        leagueId,
+        role: membership.role,
+        teamId: team.id,
+        claimToken: team.claimToken,
+      },
+      { sleeperUsername: parsed.data.sleeperUsername },
+    );
   }
 
   // Release previous claim from this browser in this league
@@ -94,14 +97,16 @@ export async function POST(req: Request, { params }: Params) {
 
   await seedPersonalValuesForTeam(leagueId, team.id);
 
-  const res = NextResponse.json({ team: updated });
-  await upsertMembershipOnResponse(res, {
-    leagueId,
-    role: membership.role,
-    teamId: updated.id,
-    claimToken,
-  });
-  return res;
+  return jsonWithMembership(
+    { team: updated },
+    {
+      leagueId,
+      role: membership.role,
+      teamId: updated.id,
+      claimToken,
+    },
+    { sleeperUsername: parsed.data.sleeperUsername },
+  );
 }
 
 /** Reconnect this browser to your Sleeper team without picking from the list. */
@@ -127,15 +132,17 @@ export async function PUT(req: Request, { params }: Params) {
     );
   }
 
-  const res = NextResponse.json({
-    teamId: claim.teamId,
-    displayName: claim.displayName,
-  });
-  await upsertMembershipOnResponse(res, {
-    leagueId,
-    role: access.membership!.role,
-    teamId: claim.teamId,
-    claimToken: claim.claimToken,
-  });
-  return res;
+  return jsonWithMembership(
+    {
+      teamId: claim.teamId,
+      displayName: claim.displayName,
+    },
+    {
+      leagueId,
+      role: access.membership!.role,
+      teamId: claim.teamId,
+      claimToken: claim.claimToken,
+    },
+    { sleeperUsername: body.data.sleeperUsername },
+  );
 }

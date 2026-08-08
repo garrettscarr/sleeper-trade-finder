@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
+import { findLeagueByAdminCode, findLeagueByInviteCode } from "@/lib/access-code";
+import { jsonWithMembership } from "@/lib/auth-response";
 import { restoreClaimForSleeperUsername } from "@/lib/claim-restore";
-import { prisma } from "@/lib/prisma";
-import { upsertMembershipOnResponse } from "@/lib/session";
 
 const schema = z.object({
   code: z.string().min(4),
@@ -16,53 +16,56 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Enter an invite or admin code" }, { status: 400 });
   }
 
-  const code = parsed.data.code.trim().toLowerCase();
+  const code = parsed.data.code;
   const sleeperUsername = parsed.data.sleeperUsername?.trim();
 
-  const asAdmin = await prisma.league.findFirst({
-    where: { adminCode: code },
-  });
+  const asAdmin = await findLeagueByAdminCode(code);
   if (asAdmin) {
     const claim = sleeperUsername
       ? await restoreClaimForSleeperUsername(asAdmin.id, sleeperUsername)
       : null;
-    const res = NextResponse.json({
-      leagueId: asAdmin.id,
-      role: "admin",
-      name: asAdmin.name,
-      teamRestored: Boolean(claim),
-      teamName: claim?.displayName ?? null,
-    });
-    await upsertMembershipOnResponse(res, {
-      leagueId: asAdmin.id,
-      role: "admin",
-      teamId: claim?.teamId,
-      claimToken: claim?.claimToken,
-    });
-    return res;
+    return jsonWithMembership(
+      {
+        leagueId: asAdmin.id,
+        role: "admin",
+        name: asAdmin.name,
+        inviteCode: asAdmin.inviteCode,
+        adminCode: asAdmin.adminCode,
+        teamRestored: Boolean(claim),
+        teamName: claim?.displayName ?? null,
+      },
+      {
+        leagueId: asAdmin.id,
+        role: "admin",
+        teamId: claim?.teamId,
+        claimToken: claim?.claimToken,
+      },
+      { sleeperUsername },
+    );
   }
 
-  const asInvite = await prisma.league.findFirst({
-    where: { inviteCode: code },
-  });
+  const asInvite = await findLeagueByInviteCode(code);
   if (asInvite) {
     const claim = sleeperUsername
       ? await restoreClaimForSleeperUsername(asInvite.id, sleeperUsername)
       : null;
-    const res = NextResponse.json({
-      leagueId: asInvite.id,
-      role: "member",
-      name: asInvite.name,
-      teamRestored: Boolean(claim),
-      teamName: claim?.displayName ?? null,
-    });
-    await upsertMembershipOnResponse(res, {
-      leagueId: asInvite.id,
-      role: "member",
-      teamId: claim?.teamId,
-      claimToken: claim?.claimToken,
-    });
-    return res;
+    return jsonWithMembership(
+      {
+        leagueId: asInvite.id,
+        role: "member",
+        name: asInvite.name,
+        inviteCode: asInvite.inviteCode,
+        teamRestored: Boolean(claim),
+        teamName: claim?.displayName ?? null,
+      },
+      {
+        leagueId: asInvite.id,
+        role: "member",
+        teamId: claim?.teamId,
+        claimToken: claim?.claimToken,
+      },
+      { sleeperUsername },
+    );
   }
 
   return NextResponse.json({ error: "Invalid code" }, { status: 404 });
