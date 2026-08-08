@@ -1,0 +1,129 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model League {
+  id                 String              @id @default(cuid())
+  sleeperLeagueId    String              @unique
+  name               String
+  season             String
+  scoringType        String              @default("1QB") // 1QB | SF
+  inviteCode         String              @unique // members use this to claim a team
+  adminCode          String              @unique // commissioner: sync, baseline, settings
+  baselineSource     String?
+  lastSyncedAt       DateTime?
+  createdAt          DateTime            @default(now())
+  teams              Team[]
+  draftPicks         DraftPick[]
+  baselineValues     BaselineValue[]
+  personalValues     PersonalValue[]
+  baselinePickValues BaselinePickValue[]
+  personalPickValues PersonalPickValue[]
+}
+
+model Team {
+  id              String  @id @default(cuid())
+  leagueId        String
+  sleeperRosterId Int
+  sleeperOwnerId  String?
+  displayName     String
+  teamName        String?
+  avatar          String?
+  playerIds       String  @default("[]") // JSON array of sleeper player IDs
+  claimedLabel    String?
+  claimToken      String? @unique // proves team ownership in browser cookie
+  league          League  @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+
+  @@unique([leagueId, sleeperRosterId])
+}
+
+model Player {
+  id              String          @id @default(cuid())
+  sleeperPlayerId String          @unique
+  fullName        String
+  firstName       String?
+  lastName        String?
+  position        String?
+  nflTeam         String?
+  status          String?
+  age             Int?
+  yearsExp        Int?
+  searchName      String
+  updatedAt       DateTime        @updatedAt
+  baselineValues  BaselineValue[]
+  personalValues  PersonalValue[]
+}
+
+model BaselineValue {
+  id       String @id @default(cuid())
+  leagueId String
+  playerId String
+  value    Float
+  league   League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  player   Player @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([leagueId, playerId])
+}
+
+model PersonalValue {
+  id        String   @id @default(cuid())
+  leagueId  String
+  teamId    String
+  playerId  String
+  value     Float
+  tier      String?
+  note      String?
+  updatedAt DateTime @updatedAt
+  league    League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  player    Player   @relation(fields: [playerId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, playerId])
+  @@index([leagueId, teamId])
+}
+
+model DraftPick {
+  id               String              @id @default(cuid())
+  leagueId         String
+  season           String
+  round            Int
+  rosterId         Int
+  originalRosterId Int
+  label            String
+  league           League              @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  baselineValues   BaselinePickValue[]
+  personalValues   PersonalPickValue[]
+
+  @@unique([leagueId, season, round, originalRosterId])
+}
+
+model BaselinePickValue {
+  id       String    @id @default(cuid())
+  leagueId String
+  pickId   String
+  value    Float
+  league   League    @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  pick     DraftPick @relation(fields: [pickId], references: [id], onDelete: Cascade)
+
+  @@unique([leagueId, pickId])
+}
+
+model PersonalPickValue {
+  id        String    @id @default(cuid())
+  leagueId  String
+  teamId    String
+  pickId    String
+  value     Float
+  tier      String?
+  note      String?
+  updatedAt DateTime  @updatedAt
+  league    League    @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  pick      DraftPick @relation(fields: [pickId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, pickId])
+  @@index([leagueId, teamId])
+}
