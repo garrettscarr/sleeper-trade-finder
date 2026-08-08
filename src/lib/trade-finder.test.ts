@@ -1,4 +1,10 @@
-import { findTradePackages, type AssetRef, type ValueMaps } from "./trade-finder";
+import {
+  findTradePackages,
+  packageTradeValue,
+  starsToTradeValue,
+  type AssetRef,
+  type ValueMaps,
+} from "./trade-finder";
 
 function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg);
@@ -56,7 +62,68 @@ assert(
 );
 
 const top = proposals[0];
-assert(Math.abs(top.partnerDelta) <= 0.5, "top deal should be partner-fair in stars");
+assert(Math.abs(top.partnerDelta) / top.partnerReceiveTotal <= 0.15, "top deal partner-fair");
 assert(top.youReceiveTotal > top.youGiveTotal, "you should like receiving Pickens");
+
+// Elite premium: 5★ >> two 2nds (2.0★ each)
+const bowersTv = packageTradeValue([5.0]);
+const twoSecondsTv = packageTradeValue([2.0, 2.0]);
+assert(bowersTv > 2.2 * starsToTradeValue(3.5), "5★ should be multiple mid-1sts");
+assert(twoSecondsTv < 0.45 * bowersTv, "two 2nds must not approach a 5★");
+
+const bowers: AssetRef = { kind: "player", id: "bowers", label: "Brock Bowers", position: "TE" };
+const secondA: AssetRef = { kind: "pick", id: "2a", label: "2026 2nd", position: "PICK" };
+const secondB: AssetRef = { kind: "pick", id: "2b", label: "2027 2nd", position: "PICK" };
+const firstA: AssetRef = { kind: "pick", id: "1a", label: "2026 1st", position: "PICK" };
+const firstB: AssetRef = { kind: "pick", id: "1b", label: "2027 1st", position: "PICK" };
+const firstC: AssetRef = { kind: "pick", id: "1c", label: "2028 1st", position: "PICK" };
+
+const eliteValues: ValueMaps = {
+  partner: new Map([
+    ["player:bowers", 5.0],
+    ["pick:2a", 2.0],
+    ["pick:2b", 2.0],
+    ["pick:1a", 3.5],
+    ["pick:1b", 3.5],
+    ["pick:1c", 3.5],
+  ]),
+  you: new Map([
+    ["player:bowers", 5.0],
+    ["pick:2a", 2.0],
+    ["pick:2b", 2.0],
+    ["pick:1a", 3.5],
+    ["pick:1b", 3.5],
+    ["pick:1c", 3.5],
+  ]),
+  community: new Map([
+    ["player:bowers", 5.0],
+    ["pick:2a", 2.0],
+    ["pick:2b", 2.0],
+    ["pick:1a", 3.5],
+    ["pick:1b", 3.5],
+    ["pick:1c", 3.5],
+  ]),
+};
+
+const junkForElite = findTradePackages({
+  yourAssets: [secondA, secondB],
+  wantAssets: [bowers],
+  values: eliteValues,
+  fairnessBand: 0.2,
+  maxGiveAssets: 2,
+});
+assert(junkForElite.length === 0, "two 2nds must not fair-match Bowers");
+
+const firstsForElite = findTradePackages({
+  yourAssets: [firstA, firstB, firstC],
+  wantAssets: [bowers],
+  values: eliteValues,
+  fairnessBand: 0.2,
+  maxGiveAssets: 3,
+});
+assert(
+  firstsForElite.some((p) => p.give.filter((g) => g.kind === "pick").length >= 2),
+  "Bowers should require multiple firsts (or equivalent)",
+);
 
 console.log("trade-finder.test.ts passed");

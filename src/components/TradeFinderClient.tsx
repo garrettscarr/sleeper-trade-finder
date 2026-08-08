@@ -257,8 +257,8 @@ export function TradeFinderClient({ leagueId }: { leagueId: string }) {
       <div className="stack">
         {proposals.length === 0 && !searching ? (
           <p className="muted">
-            Select assets you want and run Find trades. Results are ranked by partner
-            fairness first.
+            Select assets you want and run Find trades. Matching uses a premium curve
+            (mid-1st ≈ 100) so elites cost multiple firsts — not raw ★ addition.
           </p>
         ) : null}
         {proposals.map((p, idx) => (
@@ -278,21 +278,22 @@ export function TradeFinderClient({ leagueId }: { leagueId: string }) {
             </p>
             <div className="metrics">
               <div className="metric">
-                <span>Partner ★</span>
+                <span>Partner value</span>
                 <strong>
-                  {p.partnerGiveTotal.toFixed(1)}★ → {p.partnerReceiveTotal.toFixed(1)}★
+                  {Math.round(p.partnerGiveTotal)} → {Math.round(p.partnerReceiveTotal)}
                 </strong>
               </div>
               <div className="metric">
-                <span>Your ★</span>
+                <span>Your board</span>
                 <strong>
-                  {p.youGiveTotal.toFixed(1)}★ → {p.youReceiveTotal.toFixed(1)}★
+                  {Math.round(p.youGiveTotal)} → {Math.round(p.youReceiveTotal)}
                 </strong>
               </div>
               <div className="metric">
-                <span>Baseline ★</span>
+                <span>Market</span>
                 <strong>
-                  {p.communityGiveTotal.toFixed(1)}★ → {p.communityReceiveTotal.toFixed(1)}★
+                  {Math.round(p.communityGiveTotal)} →{" "}
+                  {Math.round(p.communityReceiveTotal)}
                 </strong>
               </div>
             </div>

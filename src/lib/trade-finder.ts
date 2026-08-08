@@ -1,3 +1,5 @@
+import { packageTradeValue, starsToTradeValue } from "./stars";
+
 export type AssetRef = {
   kind: "player" | "pick";
   id: string; // playerId or pickId
@@ -32,8 +34,12 @@ function assetKey(a: AssetRef): string {
   return `${a.kind}:${a.id}`;
 }
 
-function sumValues(assets: AssetRef[], map: Map<string, number>): number {
-  return assets.reduce((acc, a) => acc + (map.get(assetKey(a)) ?? 0), 0);
+function starList(assets: AssetRef[], map: Map<string, number>): number[] {
+  return assets.map((a) => map.get(assetKey(a)) ?? 0);
+}
+
+function sumPackage(assets: AssetRef[], map: Map<string, number>): number {
+  return packageTradeValue(starList(assets, map));
 }
 
 function combinations<T>(arr: T[], size: number): T[][] {
@@ -70,7 +76,7 @@ export function findTradePackages(input: {
   const { yourAssets, wantAssets, values, fairnessBand, maxGiveAssets } = input;
   const topK = input.topK ?? 25;
 
-  const target = sumValues(wantAssets, values.partner);
+  const target = sumPackage(wantAssets, values.partner);
   if (target <= 0 || wantAssets.length === 0) return [];
 
   const low = target * (1 - fairnessBand);
@@ -80,23 +86,23 @@ export function findTradePackages(input: {
 
   for (let size = 1; size <= maxGiveAssets; size++) {
     for (const give of combinations(yourAssets, size)) {
-      const partnerGive = sumValues(give, values.partner);
+      const partnerGive = sumPackage(give, values.partner);
       if (partnerGive < low || partnerGive > high) continue;
 
       const partnerReceive = target;
-      const youGive = sumValues(give, values.you);
-      const youReceive = sumValues(wantAssets, values.you);
-      const communityGive = sumValues(give, values.community);
-      const communityReceive = sumValues(wantAssets, values.community);
+      const youGive = sumPackage(give, values.you);
+      const youReceive = sumPackage(wantAssets, values.you);
+      const communityGive = sumPackage(give, values.community);
+      const communityReceive = sumPackage(wantAssets, values.community);
 
       const partnerDelta = partnerGive - partnerReceive;
       const youDelta = youReceive - youGive;
 
       const wantLabel = formatAssets(wantAssets);
       const giveLabel = formatAssets(give);
-      const fmt = (n: number) => `${n.toFixed(1)}★`;
+      const fmt = (n: number) => Math.round(n).toString();
       const yourView =
-        youDelta >= -0.25
+        youDelta >= -0.08 * Math.max(youGive, 1)
           ? `you also like this (${fmt(youReceive)} vs ${fmt(youGive)} on your board)`
           : `stretch for you (${fmt(youReceive)} vs ${fmt(youGive)} on your board)`;
 
@@ -111,7 +117,7 @@ export function findTradePackages(input: {
         communityReceiveTotal: communityReceive,
         partnerDelta,
         youDelta,
-        reason: `Partner rates ${giveLabel} ≈ ${wantLabel}; ${yourView}.`,
+        reason: `Partner rates ${giveLabel} ≈ ${wantLabel} on trade value (elites premium); ${yourView}.`,
       });
     }
   }
@@ -136,3 +142,6 @@ export function resolveValue(
   if (baseline != null && Number.isFinite(baseline)) return baseline;
   return 0;
 }
+
+/** Exposed for tests / UI helpers. */
+export { starsToTradeValue, packageTradeValue };

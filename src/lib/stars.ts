@@ -141,14 +141,43 @@ export function blendStars(parts: {
 }
 
 export function pickRoundToStars(round: number): number {
+  // Intentionally below linear “2×2nd = 5★” — trade matching uses starsToTradeValue.
   const table: Record<number, number> = {
     1: 3.5,
-    2: 2.5,
-    3: 1.5,
-    4: 1.0,
+    2: 2.0,
+    3: 1.0,
+    4: 0.5,
     5: 0.5,
   };
   return table[round] ?? 0.5;
+}
+
+/**
+ * Convert UI stars (0–5) into nonlinear trade points for package matching.
+ * Anchor: a mid 1st (~3.5★) = 100. Elites (~5★) land ~2.5–3× a mid 1st so
+ * two 2nds cannot “equal” Brock Bowers on additive stars alone.
+ */
+export const TRADE_VALUE_FIRST = 100;
+export const TRADE_VALUE_STAR_ANCHOR = 3.5;
+/** Higher = steeper elite premium / deeper discount on depth. */
+export const TRADE_VALUE_EXPONENT = 2.8;
+
+export function starsToTradeValue(stars: number): number {
+  if (!Number.isFinite(stars) || stars <= 0) return 0;
+  const s = Math.min(STAR_MAX, Math.max(STAR_MIN, stars));
+  return TRADE_VALUE_FIRST * Math.pow(s / TRADE_VALUE_STAR_ANCHOR, TRADE_VALUE_EXPONENT);
+}
+
+/**
+ * Package value = sum of asset TVs + a best-player premium.
+ * Discourages stuffing a deal with middling pieces to “match” one stud.
+ */
+export function packageTradeValue(starRatings: number[]): number {
+  if (starRatings.length === 0) return 0;
+  const tvs = starRatings.map(starsToTradeValue);
+  const sum = tvs.reduce((a, b) => a + b, 0);
+  const best = Math.max(...tvs);
+  return sum + 0.2 * best;
 }
 
 export function formatStars(n: number): string {

@@ -1,4 +1,11 @@
-import { adpToStars, blendStars, pointsPoolToStarMap, rankToStars } from "./stars";
+import {
+  adpToStars,
+  blendStars,
+  packageTradeValue,
+  pointsPoolToStarMap,
+  rankToStars,
+  starsToTradeValue,
+} from "./stars";
 
 function assert(cond: unknown, msg: string) {
   if (!cond) throw new Error(msg);
@@ -46,5 +53,9 @@ const blendedDepth = blendStars({
 assert(blendedElite >= 3.5, `elite blend ${blendedElite}`);
 assert(blendedDepth <= 2.0, `depth blend ${blendedDepth}`);
 assert(blendedElite - blendedDepth >= 1.0, "elite clearly above depth");
+
+assert(Math.abs(starsToTradeValue(3.5) - 100) < 0.01, "mid-1st anchor = 100");
+assert(starsToTradeValue(5.0) > 250, "5★ is multiple firsts");
+assert(packageTradeValue([2.0, 2.0]) < 0.45 * packageTradeValue([5.0]), "2×2nd << 5★");
 
 console.log("stars.test.ts passed");
