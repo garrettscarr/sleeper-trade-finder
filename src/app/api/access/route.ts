@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { upsertMembership } from "@/lib/session";
+import { upsertMembershipOnResponse } from "@/lib/session";
 
 const schema = z.object({
   code: z.string().min(4),
@@ -20,24 +20,26 @@ export async function POST(req: Request) {
     where: { adminCode: code },
   });
   if (asAdmin) {
-    await upsertMembership({ leagueId: asAdmin.id, role: "admin" });
-    return NextResponse.json({
+    const res = NextResponse.json({
       leagueId: asAdmin.id,
       role: "admin",
       name: asAdmin.name,
     });
+    await upsertMembershipOnResponse(res, { leagueId: asAdmin.id, role: "admin" });
+    return res;
   }
 
   const asInvite = await prisma.league.findFirst({
     where: { inviteCode: code },
   });
   if (asInvite) {
-    await upsertMembership({ leagueId: asInvite.id, role: "member" });
-    return NextResponse.json({
+    const res = NextResponse.json({
       leagueId: asInvite.id,
       role: "member",
       name: asInvite.name,
     });
+    await upsertMembershipOnResponse(res, { leagueId: asInvite.id, role: "member" });
+    return res;
   }
 
   return NextResponse.json({ error: "Invalid code" }, { status: 404 });

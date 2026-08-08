@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { clearSession, getSession } from "@/lib/session";
+import { clearSessionOnResponse, getSession } from "@/lib/session";
 
 export async function GET() {
   const session = await getSession();
@@ -7,6 +7,7 @@ export async function GET() {
 }
 
 export async function DELETE() {
-  await clearSession();
-  return NextResponse.json({ ok: true });
+  const res = NextResponse.json({ ok: true });
+  clearSessionOnResponse(res);
+  return res;
 }

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireLeagueAccess } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
-import { randomCode, upsertMembership } from "@/lib/session";
+import { randomCode, upsertMembershipOnResponse } from "@/lib/session";
 import { seedPersonalValuesForTeam } from "@/lib/sync-league";
 
 type Params = { params: Promise<{ leagueId: string }> };
@@ -62,14 +62,14 @@ export async function POST(req: Request, { params }: Params) {
     },
   });
 
-  await upsertMembership({
+  await seedPersonalValuesForTeam(leagueId, team.id);
+
+  const res = NextResponse.json({ team: updated });
+  await upsertMembershipOnResponse(res, {
     leagueId,
     role: membership.role,
     teamId: updated.id,
     claimToken,
   });
-
-  await seedPersonalValuesForTeam(leagueId, team.id);
-
-  return NextResponse.json({ team: updated });
+  return res;
 }
