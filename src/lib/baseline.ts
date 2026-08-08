@@ -196,11 +196,12 @@ export async function recomputeStarBaselines(leagueId: string) {
     },
   });
 
+  // Seed only missing personal rows for new players/picks — never wipe saved ratings.
   const claimed = await prisma.team.findMany({
     where: { leagueId, claimToken: { not: null } },
   });
   for (const team of claimed) {
-    await seedPersonalValuesForTeam(leagueId, team.id, { overwrite: true });
+    await seedPersonalValuesForTeam(leagueId, team.id, { overwrite: false });
   }
 
   return {

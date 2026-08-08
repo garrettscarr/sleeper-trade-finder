@@ -53,7 +53,7 @@ export function AdminPanel({
     }
     const labels = data.context?.labels?.join(", ") || "";
     setStatus(
-      `Star baselines updated for ${data.updated} players (${data.adpField} + ${data.ptsField}${labels ? `; ${labels}` : ""}). Personal boards reset to baseline.`,
+      `Market ★ updated for ${data.updated} players (${data.adpField} + ${data.ptsField}${labels ? `; ${labels}` : ""}). Your personal ratings were kept.`,
     );
     router.refresh();
   }
@@ -83,7 +83,7 @@ export function AdminPanel({
       <div className="panel stack">
         <h2 style={{ margin: 0 }}>Sleeper sync</h2>
         <p className="muted" style={{ margin: 0 }}>
-          Refresh rosters/picks, then recompute star baselines from ADP + projections +
+          Refresh rosters/picks, then recompute market ★ from ADP + projections +
           actuals.
         </p>
         <button className="btn btn-secondary" disabled={busy} onClick={sync} type="button">
@@ -103,8 +103,12 @@ export function AdminPanel({
         <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
           Current source: {baselineSource || "not computed yet"}
         </p>
+        <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
+          Recompute updates Market ★ only. Saved personal ratings stay put; new players/picks
+          get seeded from market.
+        </p>
         <button className="btn" disabled={busy} onClick={recomputeBaseline} type="button">
-          Recompute star baselines
+          Recompute market baselines
         </button>
       </div>
 
