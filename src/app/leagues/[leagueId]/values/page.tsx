@@ -45,6 +45,7 @@ export default async function ValuesPage({ params }: Props) {
         leagueId={league.id}
         initialRoster={payload.roster}
         initialLeagueAssets={payload.leagueAssets}
+        teamFilters={payload.teamFilters}
         claimedManagers={payload.claimedManagers}
       />
     </div>
