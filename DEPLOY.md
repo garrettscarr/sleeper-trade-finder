@@ -32,7 +32,7 @@ git push -u origin main
 | Name | Value |
 |------|--------|
 | `DATABASE_URL` | Neon connection string + `&connect_timeout=15` (avoids cold-start timeouts on Vercel) |
-| `AUTH_SECRET` | long random string (`openssl rand -base64 32`) |
+| `AUTH_SECRET` | long random string — set once and **do not change** (changing it logs everyone out) |
 
 4. Deploy
 

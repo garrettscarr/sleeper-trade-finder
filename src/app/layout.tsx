@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Nav } from "@/components/Nav";
+import { SessionRestore } from "@/components/SessionRestore";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -17,6 +18,7 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <div className="shell">
+          <SessionRestore />
           <Nav />
           <main>{children}</main>
         </div>
