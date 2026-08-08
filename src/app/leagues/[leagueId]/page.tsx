@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ClaimTeamForm } from "@/components/ClaimTeamForm";
-import { CopyInviteLink } from "@/components/CopyInviteLink";
+import { CopyAdminLink, CopyInviteLink } from "@/components/CopyInviteLink";
 import { prisma } from "@/lib/prisma";
 import { getMembership, getSession } from "@/lib/session";
 
@@ -119,9 +119,12 @@ export default async function LeagueHomePage({ params }: Props) {
               <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
                 Invite code: <strong>{league.inviteCode}</strong>
               </p>
-              <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
-                Admin code (private): <strong>{league.adminCode}</strong>
-              </p>
+              <div style={{ marginTop: "0.75rem" }}>
+                <p className="muted" style={{ margin: "0 0 0.35rem", fontSize: "0.85rem" }}>
+                  Test on your phone as commissioner (private):
+                </p>
+                <CopyAdminLink adminCode={league.adminCode} />
+              </div>
             </>
           ) : (
             <p className="muted" style={{ margin: 0 }}>

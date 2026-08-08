@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
-import { CopyInviteLink } from "@/components/CopyInviteLink";
+import { CopyAdminLink, CopyInviteLink } from "@/components/CopyInviteLink";
 
 export function AdminPanel({
   leagueId,
@@ -137,13 +137,22 @@ export function AdminPanel({
       </div>
 
       <div className="panel stack">
-        <h2 style={{ margin: 0 }}>Invite link</h2>
+        <h2 style={{ margin: 0 }}>Invite link (share with league)</h2>
         <CopyInviteLink inviteCode={inviteCode} />
         <p className="muted" style={{ margin: 0 }}>
           Invite code: <code>{inviteCode}</code>
         </p>
+      </div>
+
+      <div className="panel stack">
+        <h2 style={{ margin: 0 }}>Admin unlock link (you only)</h2>
         <p className="muted" style={{ margin: 0 }}>
-          Admin (private): <code>{adminCode}</code>
+          Text this to yourself to test commissioner access on your phone. Do not put it in
+          the group chat.
+        </p>
+        <CopyAdminLink adminCode={adminCode} />
+        <p className="muted" style={{ margin: 0 }}>
+          Admin code: <code>{adminCode}</code>
         </p>
       </div>
 

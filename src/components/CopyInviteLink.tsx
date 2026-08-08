@@ -5,9 +5,11 @@ import { useEffect, useState } from "react";
 export function CopyInviteLink({
   inviteCode,
   label = "Copy full invite link",
+  successText = "Copied — ready to text your league",
 }: {
   inviteCode: string;
   label?: string;
+  successText?: string;
 }) {
   const [url, setUrl] = useState(`/join/${inviteCode}`);
   const [status, setStatus] = useState("");
@@ -28,7 +30,7 @@ export function CopyInviteLink({
       document.execCommand("copy");
       document.body.removeChild(input);
     }
-    setStatus("Copied — ready to text your league");
+    setStatus(successText);
     window.setTimeout(() => setStatus(""), 2500);
   }
 
@@ -42,5 +44,16 @@ export function CopyInviteLink({
         {status ? <span className="success">{status}</span> : null}
       </div>
     </div>
+  );
+}
+
+/** Same URL shape as invite — /join/{adminCode} unlocks commissioner tools. Do not share. */
+export function CopyAdminLink({ adminCode }: { adminCode: string }) {
+  return (
+    <CopyInviteLink
+      inviteCode={adminCode}
+      label="Copy admin unlock link (private)"
+      successText="Copied — text this only to yourself"
+    />
   );
 }
