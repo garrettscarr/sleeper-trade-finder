@@ -16,7 +16,10 @@ export function EnterCodeForm({ initialCode = "" }: { initialCode?: string }) {
     const res = await fetch("/api/access", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ code: String(form.get("code")) }),
+      body: JSON.stringify({
+        code: String(form.get("code")),
+        sleeperUsername: String(form.get("sleeperUsername") || "").trim() || undefined,
+      }),
     });
     const data = await res.json();
     setLoading(false);
@@ -43,8 +46,20 @@ export function EnterCodeForm({ initialCode = "" }: { initialCode?: string }) {
           required
         />
       </div>
+      <div>
+        <label className="label" htmlFor="sleeperUsername">
+          Sleeper username (reconnects your claimed team)
+        </label>
+        <input
+          className="input"
+          id="sleeperUsername"
+          name="sleeperUsername"
+          placeholder="your_sleeper_name"
+        />
+      </div>
       <p className="muted" style={{ margin: 0, fontSize: "0.9rem" }}>
-        No email or password. The code unlocks this browser for that league only.
+        No email or password. The code unlocks this browser; your Sleeper username
+        reconnects the team you already claimed.
       </p>
       {error ? <p className="error">{error}</p> : null}
       <button className="btn" type="submit" disabled={loading}>

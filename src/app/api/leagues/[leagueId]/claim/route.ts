@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireLeagueAccess } from "@/lib/access";
+import { restoreClaimForSleeperUsername } from "@/lib/claim-restore";
 import { prisma } from "@/lib/prisma";
 import { randomCode, upsertMembershipOnResponse } from "@/lib/session";
+import { fetchUserByUsername } from "@/lib/sleeper";
 import { seedPersonalValuesForTeam } from "@/lib/sync-league";
 
 type Params = { params: Promise<{ leagueId: string }> };
@@ -10,6 +12,7 @@ type Params = { params: Promise<{ leagueId: string }> };
 const schema = z.object({
   teamId: z.string().min(1),
   label: z.string().max(40).optional(),
+  sleeperUsername: z.string().min(1).max(40).optional(),
 });
 
 export async function POST(req: Request, { params }: Params) {
@@ -37,8 +40,35 @@ export async function POST(req: Request, { params }: Params) {
     membership.claimToken &&
     team.claimToken === membership.claimToken;
 
-  if (team.claimToken && !ownsThis) {
-    return NextResponse.json({ error: "Team already claimed" }, { status: 409 });
+  // True Sleeper roster owner can reattach even if this browser lost its claim cookie.
+  let ownerOverride = false;
+  if (team.claimToken && !ownsThis && parsed.data.sleeperUsername) {
+    const user = await fetchUserByUsername(parsed.data.sleeperUsername);
+    if (user?.user_id && team.sleeperOwnerId === user.user_id) {
+      ownerOverride = true;
+    }
+  }
+
+  if (team.claimToken && !ownsThis && !ownerOverride) {
+    return NextResponse.json(
+      {
+        error:
+          "Team already claimed. If it's yours, enter your Sleeper username to reconnect.",
+      },
+      { status: 409 },
+    );
+  }
+
+  if (ownerOverride && team.claimToken) {
+    await seedPersonalValuesForTeam(leagueId, team.id);
+    const res = NextResponse.json({ team });
+    await upsertMembershipOnResponse(res, {
+      leagueId,
+      role: membership.role,
+      teamId: team.id,
+      claimToken: team.claimToken,
+    });
+    return res;
   }
 
   // Release previous claim from this browser in this league
@@ -70,6 +100,42 @@ export async function POST(req: Request, { params }: Params) {
     role: membership.role,
     teamId: updated.id,
     claimToken,
+  });
+  return res;
+}
+
+/** Reconnect this browser to your Sleeper team without picking from the list. */
+export async function PUT(req: Request, { params }: Params) {
+  const { leagueId } = await params;
+  const access = await requireLeagueAccess(leagueId);
+  if (access.error) {
+    return NextResponse.json({ error: access.error }, { status: 403 });
+  }
+
+  const body = z
+    .object({ sleeperUsername: z.string().min(1).max(40) })
+    .safeParse(await req.json());
+  if (!body.success) {
+    return NextResponse.json({ error: "Enter your Sleeper username" }, { status: 400 });
+  }
+
+  const claim = await restoreClaimForSleeperUsername(leagueId, body.data.sleeperUsername);
+  if (!claim) {
+    return NextResponse.json(
+      { error: "No team in this league matches that Sleeper username" },
+      { status: 404 },
+    );
+  }
+
+  const res = NextResponse.json({
+    teamId: claim.teamId,
+    displayName: claim.displayName,
+  });
+  await upsertMembershipOnResponse(res, {
+    leagueId,
+    role: access.membership!.role,
+    teamId: claim.teamId,
+    claimToken: claim.claimToken,
   });
   return res;
 }

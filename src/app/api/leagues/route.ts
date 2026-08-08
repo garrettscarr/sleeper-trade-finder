@@ -4,6 +4,7 @@ import { sessionLeagueIds } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 import { getSession, upsertMembershipOnResponse } from "@/lib/session";
 import { recomputeStarBaselines } from "@/lib/baseline";
+import { restoreClaimForSleeperUsername } from "@/lib/claim-restore";
 import {
   fetchUserByUsername,
   fetchUserLeagues,
@@ -112,6 +113,7 @@ export async function POST(req: Request) {
       );
     }
 
+    const claim = await restoreClaimForSleeperUsername(existing.id, sleeperUsername);
     const res = NextResponse.json({
       league: {
         id: existing.id,
@@ -123,10 +125,18 @@ export async function POST(req: Request) {
       },
       alreadyExists: true,
       recovered: true,
-      message:
-        "Welcome back — this browser is unlocked as commissioner. Save your invite and admin codes again.",
+      teamRestored: Boolean(claim),
+      teamName: claim?.displayName ?? null,
+      message: claim
+        ? `Welcome back — unlocked as commissioner and reconnected to ${claim.displayName}. Save your codes again.`
+        : "Welcome back — unlocked as commissioner. Claim your Sleeper team next. Save your codes again.",
     });
-    await upsertMembershipOnResponse(res, { leagueId: existing.id, role: "admin" });
+    await upsertMembershipOnResponse(res, {
+      leagueId: existing.id,
+      role: "admin",
+      teamId: claim?.teamId,
+      claimToken: claim?.claimToken,
+    });
     return res;
   }
 
