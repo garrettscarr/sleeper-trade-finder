@@ -8,6 +8,23 @@ export type SleeperLeague = {
   roster_positions?: string[];
   settings?: Record<string, number>;
   scoring_settings?: Record<string, number>;
+  previous_league_id?: string | null;
+};
+
+export type SleeperTransaction = {
+  transaction_id: string;
+  type: string;
+  status: string;
+  roster_ids: number[];
+  adds: Record<string, number> | null;
+  draft_picks: {
+    season: string;
+    round: number;
+    roster_id: number;
+    previous_owner_id: number;
+    owner_id: number;
+  }[];
+  created: number;
 };
 
 export type SleeperUser = {
@@ -74,6 +91,11 @@ export async function fetchLeagueRosters(leagueId: string) {
 
 export async function fetchTradedPicks(leagueId: string) {
   return sleeperGet<SleeperTradedPick[]>(`/league/${leagueId}/traded_picks`);
+}
+
+/** Sleeper groups transactions by "round" (week); offseason trades land in low rounds. */
+export async function fetchLeagueTransactions(leagueId: string, round: number) {
+  return sleeperGet<SleeperTransaction[]>(`/league/${leagueId}/transactions/${round}`);
 }
 
 export async function fetchAllPlayers() {

@@ -67,6 +67,9 @@ export default async function LeagueHomePage({ params }: Props) {
         <Link className="tab" href={`/leagues/${league.id}/values`}>
           My values
         </Link>
+        <Link className="tab" href={`/leagues/${league.id}/lab`}>
+          Value Lab
+        </Link>
         <Link className="tab" href={`/leagues/${league.id}/finder`}>
           Trade Finder
         </Link>
@@ -94,7 +97,10 @@ export default async function LeagueHomePage({ params }: Props) {
           </p>
           {myTeam ? (
             <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-              <Link className="btn" href={`/leagues/${league.id}/values`}>
+              <Link className="btn" href={`/leagues/${league.id}/lab`}>
+                Price players with mock trades
+              </Link>
+              <Link className="btn btn-secondary" href={`/leagues/${league.id}/values`}>
                 Edit my values
               </Link>
               <Link className="btn btn-secondary" href={`/leagues/${league.id}/finder`}>

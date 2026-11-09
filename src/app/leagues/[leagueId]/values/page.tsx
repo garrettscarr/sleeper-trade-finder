@@ -36,6 +36,9 @@ export default async function ValuesPage({ params }: Props) {
         <Link className="tab active" href={`/leagues/${league.id}/values`}>
           My values
         </Link>
+        <Link className="tab" href={`/leagues/${league.id}/lab`}>
+          Value Lab
+        </Link>
         <Link className="tab" href={`/leagues/${league.id}/finder`}>
           Trade Finder
         </Link>

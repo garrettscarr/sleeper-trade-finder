@@ -168,6 +168,14 @@ export function starsToTradeValue(stars: number): number {
   return TRADE_VALUE_FIRST * Math.pow(s / TRADE_VALUE_STAR_ANCHOR, TRADE_VALUE_EXPONENT);
 }
 
+/** Inverse of starsToTradeValue (unclamped, unrounded). */
+export function tradeValueToStars(tv: number): number {
+  if (!Number.isFinite(tv) || tv <= 0) return 0;
+  return TRADE_VALUE_STAR_ANCHOR * Math.pow(tv / TRADE_VALUE_FIRST, 1 / TRADE_VALUE_EXPONENT);
+}
+
+export const BEST_ASSET_PREMIUM = 0.2;
+
 /**
  * Package value = sum of asset TVs + a best-player premium.
  * Discourages stuffing a deal with middling pieces to “match” one stud.
@@ -177,7 +185,12 @@ export function packageTradeValue(starRatings: number[]): number {
   const tvs = starRatings.map(starsToTradeValue);
   const sum = tvs.reduce((a, b) => a + b, 0);
   const best = Math.max(...tvs);
-  return sum + 0.2 * best;
+  return sum + BEST_ASSET_PREMIUM * best;
+}
+
+/** Star rating a single asset needs so packageTradeValue([stars]) ≈ packageTv. */
+export function starsForPackageValue(packageTv: number): number {
+  return clampStars(tradeValueToStars(packageTv / (1 + BEST_ASSET_PREMIUM)));
 }
 
 export function formatStars(n: number): string {
