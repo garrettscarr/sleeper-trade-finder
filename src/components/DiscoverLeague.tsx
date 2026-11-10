@@ -146,7 +146,7 @@ export function DiscoverLeague() {
                         {" · "}
                         {it.teamName
                           ? `your team: ${it.teamName}`
-                          : "your team is signed in on another device"}
+                          : "no roster found for you, tap your team inside"}
                       </>
                     ) : null}
                   </div>

@@ -69,9 +69,7 @@ export async function POST(req: Request) {
       const prior = proof?.memberships.find((m) => m.leagueId === existing.id);
       if (prior) {
         const claim = sleeperUsername
-          ? await restoreClaimForSleeperUsername(existing.id, sleeperUsername, {
-              allowClaimedCommissioner: prior.role === "admin",
-            })
+          ? await restoreClaimForSleeperUsername(existing.id, sleeperUsername)
           : null;
         return jsonWithMembership(
           {
@@ -104,9 +102,7 @@ export async function POST(req: Request) {
       const asAdmin = await findLeagueByAdminCode(accessCode);
       if (asAdmin && asAdmin.id === existing.id) {
         const claim = sleeperUsername
-          ? await restoreClaimForSleeperUsername(existing.id, sleeperUsername, {
-              allowClaimedCommissioner: true,
-            })
+          ? await restoreClaimForSleeperUsername(existing.id, sleeperUsername)
           : null;
         return jsonWithMembership(
           {
@@ -192,9 +188,7 @@ export async function POST(req: Request) {
     }
     // Brand-new league: the importer's own team can be attached straight away.
     const claim = sleeperUsername
-      ? await restoreClaimForSleeperUsername(league.id, sleeperUsername, {
-          allowClaimedCommissioner: true,
-        }).catch(() => null)
+      ? await restoreClaimForSleeperUsername(league.id, sleeperUsername).catch(() => null)
       : null;
     return jsonWithMembership(
       {

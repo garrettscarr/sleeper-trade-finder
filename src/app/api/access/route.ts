@@ -22,9 +22,7 @@ export async function POST(req: Request) {
   const asAdmin = await findLeagueByAdminCode(code);
   if (asAdmin) {
     const claim = sleeperUsername
-      ? await restoreClaimForSleeperUsername(asAdmin.id, sleeperUsername, {
-          allowClaimedCommissioner: true,
-        })
+      ? await restoreClaimForSleeperUsername(asAdmin.id, sleeperUsername)
       : null;
     return jsonWithMembership(
       {

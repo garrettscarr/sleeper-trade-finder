@@ -4,15 +4,12 @@ import { randomCode } from "./session";
 import { fetchUserByUsername } from "./sleeper";
 
 /**
- * Re-attach session to the Sleeper owner's claimed (or claimable) team.
- * A Sleeper username is public, so it can't take over the commissioner's
- * already-claimed team (that would grant admin) unless the caller already
- * proved admin another way.
+ * Attach this session to the Sleeper user's own team. If the team is already
+ * claimed on another device, this device shares that claim so both stay signed in.
  */
 export async function restoreClaimForSleeperUsername(
   leagueId: string,
   sleeperUsername: string,
-  opts: { allowClaimedCommissioner?: boolean } = {},
 ): Promise<{ teamId: string; claimToken: string; displayName: string; isCommissioner: boolean } | null> {
   const user = await fetchUserByUsername(sleeperUsername);
   if (!user?.user_id) return null;
@@ -22,7 +19,6 @@ export async function restoreClaimForSleeperUsername(
     where: { leagueId, sleeperOwnerId: user.user_id },
   });
   if (!team) return null;
-  if (team.isCommissioner && team.claimToken && !opts.allowClaimedCommissioner) return null;
 
   const claimToken = team.claimToken ?? randomCode(12);
   if (!team.claimToken) {

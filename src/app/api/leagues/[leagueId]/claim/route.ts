@@ -17,9 +17,6 @@ const schema = z.object({
   sleeperUsername: z.string().min(1).max(40).optional(),
 });
 
-const COMMISSIONER_TEAM_LOCKED =
-  "That's the commissioner's team and it's already signed in elsewhere. Use “Sign in on another device” from that phone, or the admin code.";
-
 export async function POST(req: Request, { params }: Params) {
   const { leagueId } = await params;
   const access = await requireLeagueAccess(leagueId);
@@ -50,9 +47,6 @@ export async function POST(req: Request, { params }: Params) {
   // True Sleeper roster owner can reattach even if this browser lost its claim cookie.
   let ownerOverride = false;
   if (team.claimToken && !ownsThis && parsed.data.sleeperUsername) {
-    if (team.isCommissioner && membership.role !== "admin") {
-      return NextResponse.json({ error: COMMISSIONER_TEAM_LOCKED }, { status: 409 });
-    }
     const user = await fetchUserByUsername(parsed.data.sleeperUsername);
     if (user?.user_id && team.sleeperOwnerId === user.user_id) {
       ownerOverride = true;
@@ -62,10 +56,10 @@ export async function POST(req: Request, { params }: Params) {
   if (team.claimToken && !ownsThis && !ownerOverride) {
     return NextResponse.json(
       {
-        error: team.isCommissioner
-          ? COMMISSIONER_TEAM_LOCKED
+        error: parsed.data.sleeperUsername
+          ? "That Sleeper username doesn't own this team."
           : "Team already claimed. If it's yours, enter your Sleeper username to reconnect.",
-        needsUsername: !team.isCommissioner,
+        needsUsername: true,
       },
       { status: 409 },
     );
@@ -126,14 +120,10 @@ export async function PUT(req: Request, { params }: Params) {
   }
 
   const membership = access.membership!;
-  const claim = await restoreClaimForSleeperUsername(leagueId, body.data.sleeperUsername, {
-    allowClaimedCommissioner: membership.role === "admin",
-  });
+  const claim = await restoreClaimForSleeperUsername(leagueId, body.data.sleeperUsername);
   if (!claim) {
     return NextResponse.json(
-      {
-        error: `No open team matches that Sleeper username. ${COMMISSIONER_TEAM_LOCKED.replace("That's", "If it's")}`,
-      },
+      { error: "No team in this league matches that Sleeper username" },
       { status: 404 },
     );
   }

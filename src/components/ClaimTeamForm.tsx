@@ -40,7 +40,7 @@ export function ClaimTeamForm({
     const data = await res.json();
     setLoadingId("");
     if (!res.ok) {
-      if (data.needsUsername) {
+      if (data.needsUsername && !sleeperUsername) {
         setAskUsernameFor(team);
       } else {
         setError(data.error || "Claim failed");
@@ -57,13 +57,6 @@ export function ClaimTeamForm({
     setError("");
     if (!team.claimed) {
       void claim(team);
-      return;
-    }
-    if (team.isCommissioner) {
-      setAskUsernameFor(null);
-      setError(
-        "That's the commissioner's team and it's already signed in elsewhere. Use “Sign in on another device” from that phone, or the admin code.",
-      );
       return;
     }
     const saved = getSavedUsername();

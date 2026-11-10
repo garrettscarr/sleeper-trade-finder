@@ -17,9 +17,8 @@ const schema = z.object({
 });
 
 /**
- * Set up (if new) or join one Sleeper league for this username, and attach the
- * user's own team when it's free. Commissioner access still only comes from
- * holding the commissioner's team, never from the username alone.
+ * Set up (if new) or join one Sleeper league for this username and attach the
+ * user's own team, even if it's already signed in on another device.
  */
 export async function POST(req: Request) {
   const parsed = schema.safeParse(await req.json());
@@ -60,14 +59,12 @@ export async function POST(req: Request) {
   }
 
   const prior = getMembership(await getSession(), league.id);
-  const claim = prior?.teamId
-    ? null
-    : await restoreClaimForSleeperUsername(league.id, sleeperUsername, {
-        allowClaimedCommissioner: prior?.role === "admin",
-      }).catch(() => null);
+  const claim = await restoreClaimForSleeperUsername(league.id, sleeperUsername).catch(
+    () => null,
+  );
 
-  const teamId = prior?.teamId ?? claim?.teamId;
-  const claimToken = prior?.claimToken ?? claim?.claimToken;
+  const teamId = claim?.teamId ?? prior?.teamId;
+  const claimToken = claim?.claimToken ?? prior?.claimToken;
   const role = prior?.role === "admin" || claim?.isCommissioner ? "admin" : "member";
   const team = teamId
     ? await prisma.team.findUnique({ where: { id: teamId } })
