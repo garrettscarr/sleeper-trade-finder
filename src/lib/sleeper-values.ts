@@ -88,10 +88,25 @@ export function scoringHintFromLeague(scoring?: Record<string, number>): "ppr" |
   return "std";
 }
 
-export function detectDynasty(settings?: Record<string, number>): boolean {
-  if (!settings) return false;
-  if ((settings.type ?? 0) === 2) return true; // Sleeper dynasty-ish
-  if ((settings.max_keepers ?? 0) > 0) return true;
-  if ((settings.taxi_slots ?? 0) > 0) return true;
-  return false;
+export type LeagueFormat = "redraft" | "keeper" | "dynasty";
+
+/**
+ * Sleeper settings.type: 0 redraft, 1 keeper, 2 dynasty. max_keepers defaults to 1
+ * even in redraft, so only the type is trusted. Keeper leagues that keep everyone
+ * or run a taxi squad are really dynasties.
+ */
+export function detectLeagueFormat(league: {
+  settings?: Record<string, number>;
+  roster_positions?: string[];
+}): LeagueFormat {
+  const s = league.settings;
+  if (!s) return "redraft";
+  const type = s.type ?? 0;
+  if (type === 2) return "dynasty";
+  if (type === 1) {
+    const rosterSize = league.roster_positions?.length ?? 0;
+    const keepsEveryone = rosterSize > 0 && (s.max_keepers ?? 0) >= rosterSize - 2;
+    return keepsEveryone || (s.taxi_slots ?? 0) > 0 ? "dynasty" : "keeper";
+  }
+  return "redraft";
 }

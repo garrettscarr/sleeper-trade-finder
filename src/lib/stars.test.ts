@@ -77,5 +77,7 @@ const mid = blendWeights(seasonProgress(10), true);
 assert(mid.actual > 0.4, `week 10 points weight ${mid.actual.toFixed(2)}`);
 const late = blendWeights(seasonProgress(17), true);
 assert(late.actual > 0.6, `week 17 points weight ${late.actual.toFixed(2)}`);
+const redraftMid = blendWeights(seasonProgress(10), true, true);
+assert(redraftMid.actual > mid.actual, "redraft leans harder on this season's points");
 
 console.log("stars.test.ts passed");

@@ -121,6 +121,8 @@ export function ValuesEditor({
   const [saving, setSaving] = useState(false);
 
   const dirtyCount = Object.keys(pending).length;
+  const hasPicks =
+    rows.some((r) => r.kind === "pick") || leagueRows.some((r) => r.kind === "pick");
 
   function updateRow(row: ValueRow, patch: Partial<ValueRow>) {
     const next = { ...row, ...patch, value: clampPersonalStars(patch.value ?? row.value) };
@@ -236,7 +238,7 @@ export function ValuesEditor({
         onChange={(e) => setQuery(e.target.value)}
       />
       <div className="chip-scroll">
-        {POSITIONS.map((p) => (
+        {POSITIONS.filter((p) => p !== "PICK" || hasPicks).map((p) => (
           <button
             key={p}
             type="button"

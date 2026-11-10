@@ -1,5 +1,6 @@
 import { after } from "next/server";
 import { prisma } from "./prisma";
+import { detectLeagueFormat } from "./sleeper-values";
 import { BASELINE_BLEND_VERSION } from "./stars";
 import {
   defaultPickValue,
@@ -153,13 +154,18 @@ export async function addMissingPlayers(rosters: SleeperRoster[]): Promise<numbe
 /** Light sync: rosters, managers, and pick ownership. Skips the full player directory. */
 export async function refreshRosters(leagueId: string) {
   const league = await prisma.league.findUnique({ where: { id: leagueId } });
-  if (!league) return { addedPlayers: 0 };
+  if (!league) return { addedPlayers: 0, formatChanged: false };
   const [leagueData, users, rosters, tradedPicks] = await Promise.all([
     fetchLeague(league.sleeperLeagueId),
     fetchLeagueUsers(league.sleeperLeagueId),
     fetchLeagueRosters(league.sleeperLeagueId),
     fetchTradedPicks(league.sleeperLeagueId).catch(() => []),
   ]);
+  const format = detectLeagueFormat(leagueData);
+  const formatChanged = format !== league.format;
+  if (formatChanged) {
+    await prisma.league.update({ where: { id: leagueId }, data: { format } });
+  }
   const addedPlayers = await addMissingPlayers(rosters);
   await applyRosters(leagueId, rosters, users);
   await applyPickOwnership(
@@ -167,7 +173,7 @@ export async function refreshRosters(leagueId: string) {
     Number(leagueData.season) || new Date().getFullYear(),
     tradedPicks,
   );
-  return { addedPlayers };
+  return { addedPlayers, formatChanged };
 }
 
 /**
@@ -187,8 +193,8 @@ export async function ensureFreshRosters(leagueId: string) {
   if (claimed.count === 0) return;
 
   try {
-    const { addedPlayers } = await refreshRosters(leagueId);
-    if (addedPlayers > 0 || (await marketIsStale(leagueId))) {
+    const { addedPlayers, formatChanged } = await refreshRosters(leagueId);
+    if (addedPlayers > 0 || formatChanged || (await marketIsStale(leagueId))) {
       // Market ★ is slow to rebuild, so finish it after the response.
       after(async () => {
         const { recomputeStarBaselines } = await import("./baseline");

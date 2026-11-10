@@ -1,5 +1,6 @@
 import { clampStars } from "./stars";
 import type { LeagueValueContext } from "./league-context";
+import type { LeagueFormat } from "./sleeper-values";
 
 export type AdjustInput = {
   baseStars: number;
@@ -10,14 +11,25 @@ export type AdjustInput = {
 };
 
 /**
- * Age curve: dynasty cares a lot; redraft mostly cares about RB decline.
+ * Age curve. Dynasty cares a lot; keeper cares half as much (you can keep a few);
+ * redraft only cares about this season, which points and projections already show.
  * Returns a star delta (can be negative).
  */
 export function ageStarDelta(opts: {
   age?: number | null;
   yearsExp?: number | null;
   position?: string | null;
-  isDynasty: boolean;
+  format: LeagueFormat;
+}): number {
+  if (opts.format === "redraft") return 0;
+  const dynasty = dynastyAgeDelta(opts);
+  return opts.format === "keeper" ? dynasty / 2 : dynasty;
+}
+
+function dynastyAgeDelta(opts: {
+  age?: number | null;
+  yearsExp?: number | null;
+  position?: string | null;
 }): number {
   const pos = (opts.position || "").toUpperCase();
   const age =
@@ -25,39 +37,27 @@ export function ageStarDelta(opts: {
     (opts.yearsExp != null ? 21 + opts.yearsExp : null);
   if (age == null || !Number.isFinite(age)) return 0;
 
-  if (opts.isDynasty) {
-    if (pos === "RB") {
-      if (age <= 23) return 0.5;
-      if (age <= 25) return 0.25;
-      if (age <= 27) return 0;
-      if (age <= 29) return -0.5;
-      return -1.0;
-    }
-    if (pos === "QB") {
-      if (age <= 26) return 0.5;
-      if (age <= 30) return 0.25;
-      if (age <= 33) return 0;
-      if (age <= 36) return -0.25;
-      return -0.75;
-    }
-    // WR / TE — longer runway
-    if (age <= 24) return 0.5;
-    if (age <= 26) return 0.25;
-    if (age <= 28) return 0;
-    if (age <= 30) return -0.25;
-    if (age <= 32) return -0.5;
+  if (pos === "RB") {
+    if (age <= 23) return 0.5;
+    if (age <= 25) return 0.25;
+    if (age <= 27) return 0;
+    if (age <= 29) return -0.5;
     return -1.0;
   }
-
-  // Redraft: mild, RB-focused
-  if (pos === "RB") {
-    if (age <= 24) return 0.25;
-    if (age >= 29) return -0.5;
-    if (age >= 27) return -0.25;
-    return 0;
+  if (pos === "QB") {
+    if (age <= 26) return 0.5;
+    if (age <= 30) return 0.25;
+    if (age <= 33) return 0;
+    if (age <= 36) return -0.25;
+    return -0.75;
   }
-  if (age >= 33) return -0.25;
-  return 0;
+  // WR / TE — longer runway
+  if (age <= 24) return 0.5;
+  if (age <= 26) return 0.25;
+  if (age <= 28) return 0;
+  if (age <= 30) return -0.25;
+  if (age <= 32) return -0.5;
+  return -1.0;
 }
 
 /**
@@ -107,7 +107,7 @@ export function applyValueAdjustments(input: AdjustInput): {
     age: input.age,
     yearsExp: input.yearsExp,
     position: input.position,
-    isDynasty: input.ctx.isDynasty,
+    format: input.ctx.format,
   });
   const tePremium = tePremiumStarDelta({
     baseStars: input.baseStars,

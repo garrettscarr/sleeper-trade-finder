@@ -1,5 +1,5 @@
 import type { SleeperLeague } from "./sleeper";
-import { detectDynasty, scoringHintFromLeague } from "./sleeper-values";
+import { detectLeagueFormat, scoringHintFromLeague, type LeagueFormat } from "./sleeper-values";
 
 export type StarterDemand = {
   QB: number;
@@ -11,6 +11,8 @@ export type StarterDemand = {
 };
 
 export type LeagueValueContext = {
+  format: LeagueFormat;
+  /** Only true dynasty leagues value youth, future picks, and dynasty ADP. */
   isDynasty: boolean;
   isSuperflex: boolean;
   scoringHint: "ppr" | "half" | "std";
@@ -106,16 +108,16 @@ export function buildLeagueValueContext(
   if (starters.TE >= 2) scarcity.TE = Math.min(1.8, scarcity.TE + 0.25);
   if (tePremium > 0) scarcity.TE = Math.min(1.8, scarcity.TE + 0.15 + tePremium * 0.1);
 
-  const labels: string[] = [];
-  if (detectDynasty(league.settings)) labels.push("dynasty");
-  else labels.push("redraft");
+  const format = detectLeagueFormat(league);
+  const labels: string[] = [format];
   labels.push(isSuperflex ? "superflex" : "1QB");
   if (tePremium > 0) labels.push(`TEP(+${tePremium})`);
   if (scarcity.TE >= 1.25) labels.push("TE-scarce");
   if (scarcity.QB >= 1.25) labels.push("QB-scarce");
 
   return {
-    isDynasty: detectDynasty(league.settings),
+    format,
+    isDynasty: format === "dynasty",
     isSuperflex,
     scoringHint: scoringHintFromLeague(league.scoring_settings),
     tePremium,

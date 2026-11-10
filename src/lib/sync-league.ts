@@ -1,6 +1,7 @@
 import { prisma } from "./prisma";
 import { addMissingPlayers, applyPickOwnership, applyRosters } from "./roster-refresh";
 import { randomAccessCode } from "./session";
+import { detectLeagueFormat } from "./sleeper-values";
 import {
   defaultPickValue,
   detectScoringType,
@@ -27,6 +28,7 @@ export async function syncLeagueFromSleeper(opts: {
   ]);
 
   const scoringType = detectScoringType(leagueData);
+  const format = detectLeagueFormat(leagueData);
 
   const allPlayerIds = new Set<string>();
   for (const r of rosters) {
@@ -45,6 +47,7 @@ export async function syncLeagueFromSleeper(opts: {
           name: leagueData.name,
           season: String(leagueData.season),
           scoringType,
+          format,
           lastSyncedAt: new Date(),
         },
       })
@@ -54,6 +57,7 @@ export async function syncLeagueFromSleeper(opts: {
           name: leagueData.name,
           season: String(leagueData.season),
           scoringType,
+          format,
           inviteCode: randomAccessCode(8),
           adminCode: randomAccessCode(8),
           lastSyncedAt: new Date(),

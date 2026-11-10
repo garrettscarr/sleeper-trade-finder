@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireClaimedTeam, requireLeagueAccess } from "@/lib/access";
+import { picksAllowed } from "@/lib/league-format";
 import { prisma } from "@/lib/prisma";
 import {
   findTradePackages,
@@ -10,6 +11,14 @@ import {
 } from "@/lib/trade-finder";
 
 type Params = { params: Promise<{ leagueId: string }> };
+
+async function leagueTradesPicks(leagueId: string): Promise<boolean> {
+  const league = await prisma.league.findUnique({
+    where: { id: leagueId },
+    select: { format: true, picksTradeable: true },
+  });
+  return league ? picksAllowed(league) : false;
+}
 
 const schema = z.object({
   partnerTeamId: z.string(),
@@ -102,17 +111,22 @@ export async function POST(req: Request, { params }: Params) {
 
   const yourRosterIds = JSON.parse(yourTeam.playerIds || "[]") as string[];
   const partnerRosterIds = JSON.parse(partnerTeam.playerIds || "[]") as string[];
+  const withPicks = await leagueTradesPicks(leagueId);
 
   const [yourPlayers, partnerPlayers, yourPicks, partnerPicks, leagueTeams] =
     await Promise.all([
       prisma.player.findMany({ where: { sleeperPlayerId: { in: yourRosterIds } } }),
       prisma.player.findMany({ where: { sleeperPlayerId: { in: partnerRosterIds } } }),
-      prisma.draftPick.findMany({
-        where: { leagueId, rosterId: yourTeam.sleeperRosterId },
-      }),
-      prisma.draftPick.findMany({
-        where: { leagueId, rosterId: partnerTeam.sleeperRosterId },
-      }),
+      withPicks
+        ? prisma.draftPick.findMany({
+            where: { leagueId, rosterId: yourTeam.sleeperRosterId },
+          })
+        : [],
+      withPicks
+        ? prisma.draftPick.findMany({
+            where: { leagueId, rosterId: partnerTeam.sleeperRosterId },
+          })
+        : [],
       prisma.team.findMany({
         where: { leagueId },
         select: { sleeperRosterId: true, avatar: true },
@@ -223,6 +237,7 @@ export async function GET(_req: Request, { params }: Params) {
   await requireLeagueAccess(leagueId);
 
   const yourTeam = access.team;
+  const withPicks = await leagueTradesPicks(leagueId);
   const teams = await prisma.team.findMany({
     where: { leagueId, id: { not: yourTeam.id } },
     orderBy: { displayName: "asc" },
@@ -243,10 +258,12 @@ export async function GET(_req: Request, { params }: Params) {
         where: { sleeperPlayerId: { in: playerIds } },
         orderBy: { fullName: "asc" },
       });
-      const picks = await prisma.draftPick.findMany({
-        where: { leagueId, rosterId: t.sleeperRosterId },
-        orderBy: [{ season: "asc" }, { round: "asc" }],
-      });
+      const picks = withPicks
+        ? await prisma.draftPick.findMany({
+            where: { leagueId, rosterId: t.sleeperRosterId },
+            orderBy: [{ season: "asc" }, { round: "asc" }],
+          })
+        : [];
       return {
         team: {
           id: t.id,

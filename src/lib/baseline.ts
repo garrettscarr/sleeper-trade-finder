@@ -140,6 +140,7 @@ export async function recomputeStarBaselines(leagueId: string) {
       actual: actualStars.get(sid) ?? null,
       progress,
       useActuals,
+      shortTerm: !ctx.isDynasty,
     });
 
     const adjusted = applyValueAdjustments({

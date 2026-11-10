@@ -7,6 +7,8 @@ type Params = { params: Promise<{ leagueId: string }> };
 
 const schema = z.object({
   scoringType: z.enum(["1QB", "SF"]),
+  /** "auto" follows the league format (picks only in dynasty). */
+  picksTradeable: z.enum(["auto", "yes", "no"]).optional(),
 });
 
 export async function PATCH(req: Request, { params }: Params) {
@@ -21,9 +23,13 @@ export async function PATCH(req: Request, { params }: Params) {
     return NextResponse.json({ error: "Invalid settings" }, { status: 400 });
   }
 
+  const picks = parsed.data.picksTradeable;
   const updated = await prisma.league.update({
     where: { id: leagueId },
-    data: { scoringType: parsed.data.scoringType },
+    data: {
+      scoringType: parsed.data.scoringType,
+      ...(picks ? { picksTradeable: picks === "auto" ? null : picks === "yes" } : {}),
+    },
   });
 
   return NextResponse.json({ league: updated });

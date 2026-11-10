@@ -13,6 +13,8 @@ model League {
   name               String
   season             String
   scoringType        String              @default("1QB") // 1QB | SF
+  format             String              @default("dynasty") // redraft | keeper | dynasty (from Sleeper)
+  picksTradeable     Boolean? // null = auto: only dynasty leagues trade picks
   inviteCode         String              @unique // members use this to claim a team
   adminCode          String              @unique // commissioner: sync, baseline, settings
   baselineSource     String?

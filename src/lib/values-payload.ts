@@ -1,3 +1,4 @@
+import { picksAllowed } from "./league-format";
 import { prisma } from "./prisma";
 import {
   getLeaguePickConsensus,
@@ -115,10 +116,17 @@ export async function buildValuesPayload(leagueId: string, teamId: string) {
     .map((p) => toPlayerRow(p, true))
     .sort((a, b) => posOrder(a.position) - posOrder(b.position) || b.value - a.value);
 
-  const allPicks = await prisma.draftPick.findMany({
-    where: { leagueId },
-    orderBy: [{ season: "asc" }, { round: "asc" }],
+  const league = await prisma.league.findUnique({
+    where: { id: leagueId },
+    select: { format: true, picksTradeable: true },
   });
+  const allPicks =
+    league && picksAllowed(league)
+      ? await prisma.draftPick.findMany({
+          where: { leagueId },
+          orderBy: [{ season: "asc" }, { round: "asc" }],
+        })
+      : [];
   const teamByRosterId = new Map(
     allTeams.map((t) => [t.sleeperRosterId, t] as const),
   );

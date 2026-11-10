@@ -43,6 +43,35 @@ const depthTe = applyValueAdjustments({
 assert(depthTe.stars < bowers.stars - 1.5, "depth TE well below elite TEP");
 
 assert(tePremiumStarDelta({ baseStars: 4, position: "WR", tePremium: 1 }) === 0, "TEP ignores WR");
-assert(ageStarDelta({ age: 31, position: "RB", isDynasty: true }) <= -0.5, "old RB ding");
+assert(ageStarDelta({ age: 31, position: "RB", format: "dynasty" }) <= -0.5, "old RB ding");
+
+// Redraft only cares about this season; keeper is halfway
+assert(ageStarDelta({ age: 31, position: "RB", format: "redraft" }) === 0, "redraft ignores age");
+assert(ageStarDelta({ age: 22, position: "WR", format: "redraft" }) === 0, "no youth bump in redraft");
+assert(
+  ageStarDelta({ age: 31, position: "RB", format: "keeper" }) ===
+    ageStarDelta({ age: 31, position: "RB", format: "dynasty" }) / 2,
+  "keeper = half the dynasty age curve",
+);
+
+// Sleeper leaves max_keepers at 1 in plain redraft leagues
+const redraftLeague = {
+  ...tepLeague,
+  settings: { type: 0, max_keepers: 1, taxi_slots: 0 },
+} satisfies SleeperLeague;
+const keeperLeague = {
+  ...tepLeague,
+  settings: { type: 1, max_keepers: 3, taxi_slots: 0 },
+} satisfies SleeperLeague;
+const fullKeeperDynasty = {
+  ...tepLeague,
+  settings: { type: 1, max_keepers: 8, taxi_slots: 0 },
+} satisfies SleeperLeague;
+assert(buildLeagueValueContext(redraftLeague, "SF").format === "redraft", "redraft detected");
+assert(buildLeagueValueContext(keeperLeague, "SF").format === "keeper", "keeper detected");
+assert(
+  buildLeagueValueContext(fullKeeperDynasty, "SF").format === "dynasty",
+  "keep-everyone keeper counts as dynasty",
+);
 
 console.log("value-adjusters.test.ts passed");

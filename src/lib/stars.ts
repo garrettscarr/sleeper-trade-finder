@@ -7,7 +7,7 @@ export const STAR_ELITE = 5.5;
 export const STAR_STEP = 0.5;
 
 /** Bumped when the market-rating formula changes so leagues recompute automatically. */
-export const BASELINE_BLEND_VERSION = "blend-v2";
+export const BASELINE_BLEND_VERSION = "blend-v3";
 
 export function clampStars(n: number, max: number = STAR_MAX): number {
   if (!Number.isFinite(n)) return STAR_MIN;
@@ -97,16 +97,19 @@ export function seasonProgress(week: number | null | undefined, totalWeeks = 17)
 export function blendWeights(
   progress: number,
   useActuals = true,
+  /** Redraft/keeper: this season is all that matters, so lean on production now. */
+  shortTerm = false,
 ): {
   adp: number;
   proj: number;
   actual: number;
 } {
   const p = Math.min(1, Math.max(0, progress));
-  // Season points ramp up fast: ~45% of the rating by midseason, ~70% by the end.
-  const adp = 0.45 - 0.3 * p;
-  const proj = 0.55 - 0.25 * p;
-  const actual = useActuals && p > 0 ? 0.15 + 0.85 * p : 0;
+  // Season points ramp up fast: ~45% of the rating by midseason, ~70% by the end
+  // (~55% / ~75% for short-term formats).
+  const adp = shortTerm ? 0.35 - 0.3 * p : 0.45 - 0.3 * p;
+  const proj = shortTerm ? 0.6 - 0.25 * p : 0.55 - 0.25 * p;
+  const actual = useActuals && p > 0 ? (shortTerm ? 0.3 + p : 0.15 + 0.85 * p) : 0;
   const sum = adp + proj + actual;
   return { adp: adp / sum, proj: proj / sum, actual: actual / sum };
 }
@@ -117,9 +120,10 @@ export function blendStars(parts: {
   actual: number | null;
   progress: number;
   useActuals?: boolean;
+  shortTerm?: boolean;
 }): number {
   const useActuals = parts.useActuals ?? true;
-  const w = blendWeights(parts.progress, useActuals);
+  const w = blendWeights(parts.progress, useActuals, parts.shortTerm ?? false);
 
   // When ADP + projections disagree, lean toward the stronger signal so
   // elites (great proj, merely good ADP) aren't crushed to depth-tier stars.

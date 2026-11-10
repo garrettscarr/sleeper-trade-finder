@@ -26,6 +26,8 @@ export default async function AdminPage({ params }: Props) {
       <AdminPanel
         leagueId={league.id}
         scoringType={league.scoringType}
+        format={league.format}
+        picksTradeable={league.picksTradeable}
         baselineSource={league.baselineSource}
         inviteCode={league.inviteCode}
         adminCode={league.adminCode}

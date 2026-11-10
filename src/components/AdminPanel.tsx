@@ -3,16 +3,21 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { CopyAdminLink, CopyInviteLink } from "@/components/CopyInviteLink";
+import { formatLabel } from "@/lib/league-format";
 
 export function AdminPanel({
   leagueId,
   scoringType,
+  format,
+  picksTradeable,
   baselineSource,
   inviteCode,
   adminCode,
 }: {
   leagueId: string;
   scoringType: string;
+  format: string;
+  picksTradeable: boolean | null;
   baselineSource: string | null;
   inviteCode: string;
   adminCode: string;
@@ -67,7 +72,10 @@ export function AdminPanel({
     const res = await fetch(`/api/leagues/${leagueId}/settings`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scoringType: form.get("scoringType") }),
+      body: JSON.stringify({
+        scoringType: form.get("scoringType"),
+        picksTradeable: form.get("picksTradeable"),
+      }),
     });
     const data = await res.json();
     setBusy(false);
@@ -75,7 +83,7 @@ export function AdminPanel({
       setError(data.error || "Failed to save settings");
       return;
     }
-    setStatus("Settings saved — recompute baselines to apply SF/1QB ADP choice");
+    setStatus("Settings saved. Recompute baselines to apply a 1QB/SF change.");
     router.refresh();
   }
 
@@ -128,6 +136,29 @@ export function AdminPanel({
             >
               <option value="1QB">1QB</option>
               <option value="SF">Superflex</option>
+            </select>
+          </div>
+          <p className="muted" style={{ margin: 0, fontSize: "0.9rem" }}>
+            League type from Sleeper: <strong>{formatLabel(format)}</strong>.{" "}
+            {format === "dynasty"
+              ? "Values weigh youth and future picks."
+              : "Values focus on this season; age barely matters."}
+          </p>
+          <div>
+            <label className="label" htmlFor="picksTradeable">
+              Draft picks in trades
+            </label>
+            <select
+              className="input"
+              id="picksTradeable"
+              name="picksTradeable"
+              defaultValue={picksTradeable == null ? "auto" : picksTradeable ? "yes" : "no"}
+            >
+              <option value="auto">
+                Auto ({format === "dynasty" ? "on" : "off"} for {formatLabel(format).toLowerCase()})
+              </option>
+              <option value="yes">Allow pick trades</option>
+              <option value="no">No pick trades</option>
             </select>
           </div>
           <button className="btn btn-secondary" disabled={busy} type="submit">

@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { ClaimTeamForm } from "@/components/ClaimTeamForm";
 import { CopyAdminLink, CopyInviteLink } from "@/components/CopyInviteLink";
 import { PlayerPhoto } from "@/components/PlayerPhoto";
+import { formatLabel } from "@/lib/league-format";
 import { SignInAnotherDevice } from "@/components/SignInAnotherDevice";
 import { requireLeagueAccess } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
@@ -67,7 +68,7 @@ export default async function LeagueHomePage({ params }: Props) {
         </p>
         <h1 className="page-title">{league.name}</h1>
         <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
-          {league.season} · {league.scoringType}
+          {league.season} · {formatLabel(league.format)} · {league.scoringType}
           {isAdmin ? " · you're commissioner" : ""}
           {syncedAt ? ` · rosters updated ${syncedAt}` : ""}
         </p>
