@@ -1,16 +1,28 @@
 @import "tailwindcss";
 
 :root {
-  --bg0: #0f1419;
-  --bg1: #182028;
-  --bg2: #21303a;
-  --ink: #e8eef2;
-  --muted: #9aafb8;
-  --accent: #3ecf8e;
-  --accent-dim: #2a9f6a;
-  --warn: #e8b84a;
-  --danger: #e07a6a;
-  --line: rgba(232, 238, 242, 0.12);
+  /* Sleeper-style dark navy + teal */
+  --bg0: #0f1521;
+  --bg1: #182031;
+  --bg2: #232c40;
+  --ink: #ffffff;
+  --muted: #8e9ab0;
+  --accent: #19c5b4;
+  --accent-dim: #12968a;
+  --accent-rgb: 25, 197, 180;
+  --warn: #feae58;
+  --warn-rgb: 254, 174, 88;
+  --danger: #fc2b6d;
+  --danger-rgb: 252, 43, 109;
+  --line: rgba(255, 255, 255, 0.08);
+  /* Sleeper position colors */
+  --pos-qb: #fc2b6d;
+  --pos-rb: #20ceb8;
+  --pos-wr: #56c9f8;
+  --pos-te: #feae58;
+  --pos-k: #c96cff;
+  --pos-def: #bf755d;
+  --pos-pick: #8e9ab0;
   --font-display: "Segoe UI", "Helvetica Neue", sans-serif;
   --font-body: "Segoe UI", "Helvetica Neue", sans-serif;
 }
@@ -27,10 +39,7 @@ html,
 body {
   margin: 0;
   min-height: 100%;
-  background:
-    radial-gradient(1200px 600px at 10% -10%, rgba(62, 207, 142, 0.14), transparent 55%),
-    radial-gradient(900px 500px at 90% 0%, rgba(232, 184, 74, 0.08), transparent 50%),
-    linear-gradient(180deg, var(--bg0), #0c1014 70%);
+  background: var(--bg0);
   color: var(--ink);
   font-family: var(--font-body);
 }
@@ -65,8 +74,8 @@ textarea {
 }
 
 .brand {
-  font-weight: 750;
-  letter-spacing: -0.03em;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   font-size: 1.15rem;
 }
 
@@ -88,18 +97,21 @@ textarea {
   justify-content: center;
   gap: 0.4rem;
   border: 1px solid transparent;
-  border-radius: 0.55rem;
+  border-radius: 0.6rem;
   padding: 0.65rem 1rem;
   background: var(--accent);
-  color: #062416;
-  font-weight: 650;
+  color: #08121c;
+  font-weight: 700;
   cursor: pointer;
-  transition: transform 0.15s ease, background 0.15s ease, opacity 0.15s ease;
+  transition: background 0.15s ease, opacity 0.15s ease;
 }
 
 .btn:hover {
-  background: #54d89c;
-  transform: translateY(-1px);
+  background: #3ad6c6;
+}
+
+.btn:active {
+  background: var(--accent-dim);
 }
 
 .btn:disabled {
@@ -109,21 +121,45 @@ textarea {
 }
 
 .btn-secondary {
-  background: transparent;
-  border-color: var(--line);
+  background: var(--bg2);
+  border-color: transparent;
   color: var(--ink);
 }
 
-.btn-secondary:hover {
-  background: var(--bg2);
+.btn-secondary:hover,
+.btn-secondary:active {
+  background: #2c3750;
 }
 
 .panel {
-  background: linear-gradient(180deg, rgba(33, 48, 58, 0.7), rgba(24, 32, 40, 0.9));
+  background: var(--bg1);
   border: 1px solid var(--line);
-  border-radius: 1rem;
+  border-radius: 0.85rem;
   padding: 1.25rem;
 }
+
+.pos-badge {
+  --c: var(--pos-pick);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.1rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 0.35rem;
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+  color: var(--c);
+  background: color-mix(in srgb, var(--c) 16%, transparent);
+  flex-shrink: 0;
+}
+
+.pos-QB { --c: var(--pos-qb); }
+.pos-RB { --c: var(--pos-rb); }
+.pos-WR { --c: var(--pos-wr); }
+.pos-TE { --c: var(--pos-te); }
+.pos-K { --c: var(--pos-k); }
+.pos-DEF { --c: var(--pos-def); }
 
 .hero {
   display: grid;
@@ -165,15 +201,15 @@ textarea {
 
 .input {
   width: 100%;
-  background: var(--bg0);
-  border: 1px solid var(--line);
-  border-radius: 0.55rem;
+  background: var(--bg2);
+  border: 1px solid transparent;
+  border-radius: 0.6rem;
   color: var(--ink);
   padding: 0.7rem 0.8rem;
 }
 
 .input:focus {
-  outline: 2px solid rgba(62, 207, 142, 0.35);
+  outline: 2px solid rgba(var(--accent-rgb), 0.35);
   border-color: var(--accent-dim);
 }
 
@@ -226,17 +262,17 @@ textarea {
 
 .pill.love {
   color: var(--accent);
-  border-color: rgba(62, 207, 142, 0.4);
+  border-color: rgba(var(--accent-rgb), 0.4);
 }
 
 .pill.fade {
   color: var(--danger);
-  border-color: rgba(224, 122, 106, 0.4);
+  border-color: rgba(var(--danger-rgb), 0.4);
 }
 
 .pill.fair {
   color: var(--warn);
-  border-color: rgba(232, 184, 74, 0.35);
+  border-color: rgba(var(--warn-rgb), 0.35);
 }
 
 .error {
@@ -268,7 +304,7 @@ textarea {
 .tab.active {
   color: var(--ink);
   border-color: var(--accent-dim);
-  background: rgba(62, 207, 142, 0.12);
+  background: rgba(var(--accent-rgb), 0.12);
 }
 
 .team-grid {
@@ -303,7 +339,7 @@ textarea {
   border: 1px solid var(--line);
   border-radius: 0.85rem;
   padding: 1rem;
-  background: rgba(15, 20, 25, 0.45);
+  background: var(--bg1);
 }
 
 .metrics {
@@ -364,6 +400,7 @@ summary {
 }
 
 .page-title {
+  font-weight: 800;
   font-size: clamp(1.5rem, 6vw, 2.2rem);
   letter-spacing: -0.03em;
   line-height: 1.15;
@@ -399,7 +436,7 @@ summary {
 .league-tab.active {
   color: var(--ink);
   border-color: var(--accent-dim);
-  background: rgba(62, 207, 142, 0.12);
+  background: rgba(var(--accent-rgb), 0.12);
 }
 
 .seg {
@@ -454,7 +491,7 @@ summary {
 .chip.on {
   color: var(--ink);
   border-color: var(--accent-dim);
-  background: rgba(62, 207, 142, 0.14);
+  background: rgba(var(--accent-rgb), 0.14);
 }
 
 .asset-list {
@@ -485,11 +522,15 @@ summary {
 }
 
 .asset-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   color: var(--muted);
   font-size: 0.78rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  margin-top: 0.15rem;
 }
 
 .tier-chips {
@@ -506,19 +547,19 @@ summary {
 
 .chip-love.on {
   color: var(--accent);
-  border-color: rgba(62, 207, 142, 0.5);
+  border-color: rgba(var(--accent-rgb), 0.5);
 }
 
 .chip-fair.on {
   color: var(--warn);
-  border-color: rgba(232, 184, 74, 0.45);
-  background: rgba(232, 184, 74, 0.1);
+  border-color: rgba(var(--warn-rgb), 0.45);
+  background: rgba(var(--warn-rgb), 0.1);
 }
 
 .chip-fade.on {
   color: var(--danger);
-  border-color: rgba(224, 122, 106, 0.5);
-  background: rgba(224, 122, 106, 0.1);
+  border-color: rgba(var(--danger-rgb), 0.5);
+  background: rgba(var(--danger-rgb), 0.1);
 }
 
 .stepper {
@@ -570,7 +611,7 @@ summary {
   justify-content: space-between;
   gap: 0.75rem;
   padding: 0.6rem 0.65rem 0.6rem 0.9rem;
-  background: rgba(24, 32, 40, 0.97);
+  background: rgba(24, 32, 49, 0.97);
   border: 1px solid var(--line);
   border-radius: 0.9rem;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
@@ -600,7 +641,7 @@ summary {
 
 .pick-tile.on {
   border-color: var(--accent);
-  background: rgba(62, 207, 142, 0.12);
+  background: rgba(var(--accent-rgb), 0.12);
 }
 
 .pick-tile-text {
@@ -615,8 +656,10 @@ summary {
   text-overflow: ellipsis;
 }
 
-.pick-tile-text span {
-  font-size: 0.75rem;
+.pick-tile-text .pos-badge,
+.trade-sides .pos-badge {
+  justify-self: start;
+  margin-top: 0.15rem;
 }
 
 .pick-check {
@@ -732,7 +775,7 @@ summary {
     grid-auto-flow: column;
     grid-auto-columns: 1fr;
     padding: 0.3rem 0.25rem env(safe-area-inset-bottom, 0px);
-    background: rgba(12, 16, 20, 0.96);
+    background: rgba(11, 16, 26, 0.97);
     border-top: 1px solid var(--line);
     backdrop-filter: blur(10px);
   }

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { PlayerPhoto } from "@/components/PlayerPhoto";
+import { PositionBadge } from "@/components/PositionBadge";
 import { clampStars, nudgeStars } from "@/lib/stars";
 
 export type ValueRow = {
@@ -42,7 +43,6 @@ function AssetRow({
   onChange: (row: ValueRow, patch: Partial<ValueRow>) => void;
 }) {
   const meta = [
-    row.position && row.position !== "PICK" ? row.position : null,
     row.league != null ? `Lg ${clampStars(row.league).toFixed(1)}` : null,
     row.market != null ? `Mkt ${clampStars(row.market).toFixed(1)}` : null,
   ].filter(Boolean);
@@ -56,7 +56,10 @@ function AssetRow({
       />
       <div className="asset-main">
         <div className="asset-name">{row.label}</div>
-        <div className="asset-meta">{meta.join(" · ")}</div>
+        <div className="asset-meta">
+          <PositionBadge position={row.position} />
+          <span>{meta.join(" · ")}</span>
+        </div>
         <div className="tier-chips">
           {TIERS.map((t) => (
             <button

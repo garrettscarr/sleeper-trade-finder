@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PlayerPhoto } from "@/components/PlayerPhoto";
+import { PositionBadge } from "@/components/PositionBadge";
 import { formatStars, packageTradeValue, starsForPackageValue, STAR_MAX } from "@/lib/stars";
 
 type RosterRow = {
@@ -54,13 +55,24 @@ type Bounds = { low: number | null; high: number | null; round: number };
 
 const keyOf = (r: { kind: string; id: string }) => `${r.kind}:${r.id}`;
 
-function Assets({ assets }: { assets: { kind: string; label: string; sleeperPlayerId?: string; sleeperAvatarId?: string | null; stars: number }[] }) {
+function Assets({
+  assets,
+}: {
+  assets: {
+    kind: string;
+    label: string;
+    sleeperPlayerId?: string;
+    sleeperAvatarId?: string | null;
+    position?: string | null;
+    stars: number;
+  }[];
+}) {
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: "0.5rem", marginTop: "0.4rem" }}>
+    <div className="stack" style={{ gap: "0.4rem", marginTop: "0.4rem" }}>
       {assets.map((a, i) => (
         <span
           key={`${a.label}-${i}`}
-          style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
+          style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
         >
           <PlayerPhoto
             sleeperPlayerId={a.kind === "player" ? a.sleeperPlayerId : null}
@@ -68,8 +80,10 @@ function Assets({ assets }: { assets: { kind: string; label: string; sleeperPlay
             name={a.label}
             size={32}
           />
-          <span style={{ fontSize: "0.9rem" }}>
-            {a.label} <span className="muted">{formatStars(a.stars)}</span>
+          {a.kind === "player" ? <PositionBadge position={a.position} /> : null}
+          <span style={{ fontSize: "0.9rem", fontWeight: 600, minWidth: 0 }}>{a.label}</span>
+          <span className="muted" style={{ fontSize: "0.85rem", marginLeft: "auto" }}>
+            {formatStars(a.stars)}
           </span>
         </span>
       ))}

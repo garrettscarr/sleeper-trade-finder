@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { PlayerPhoto } from "@/components/PlayerPhoto";
+import { PositionBadge } from "@/components/PositionBadge";
 
 type PartnerPayload = {
   team: {
@@ -24,6 +25,7 @@ type AssetChip = {
   kind: string;
   sleeperId?: string;
   sleeperAvatarId?: string | null;
+  position?: string | null;
 };
 
 type Proposal = {
@@ -54,7 +56,10 @@ function AssetPhotos({ assets }: { assets: AssetChip[] }) {
             name={a.label}
             size={34}
           />
-          <span style={{ fontSize: "0.95rem" }}>{a.label}</span>
+          <span style={{ display: "grid", minWidth: 0 }}>
+            <span style={{ fontSize: "0.9rem", fontWeight: 600 }}>{a.label}</span>
+            {a.kind === "player" ? <PositionBadge position={a.position} /> : null}
+          </span>
         </span>
       ))}
     </div>
@@ -233,7 +238,7 @@ export function TradeFinderClient({ leagueId }: { leagueId: string }) {
                   <PlayerPhoto sleeperPlayerId={p.sleeperPlayerId} name={p.label} size={36} />
                   <span className="pick-tile-text">
                     <strong>{p.label}</strong>
-                    <span className="muted">{p.position}</span>
+                    <PositionBadge position={p.position} />
                   </span>
                   {on ? <span className="pick-check">✓</span> : null}
                 </button>
