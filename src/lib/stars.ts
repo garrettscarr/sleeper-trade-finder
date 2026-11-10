@@ -1,17 +1,27 @@
-/** 2K-style star ratings: 0–5 in 0.5 steps. */
+/** 2K-style star ratings: 0–5 in 0.5 steps, plus a personal-only 5★+ tier. */
 
 export const STAR_MIN = 0;
 export const STAR_MAX = 5;
+/** "5★+": a cornerstone you'd only move for a haul. Market ratings never reach it. */
+export const STAR_ELITE = 5.5;
 export const STAR_STEP = 0.5;
 
-export function clampStars(n: number): number {
+/** Bumped when the market-rating formula changes so leagues recompute automatically. */
+export const BASELINE_BLEND_VERSION = "blend-v2";
+
+export function clampStars(n: number, max: number = STAR_MAX): number {
   if (!Number.isFinite(n)) return STAR_MIN;
-  const clamped = Math.min(STAR_MAX, Math.max(STAR_MIN, n));
+  const clamped = Math.min(max, Math.max(STAR_MIN, n));
   return Math.round(clamped / STAR_STEP) * STAR_STEP;
 }
 
+/** Clamp for personal ratings, which may go up to 5★+. */
+export function clampPersonalStars(n: number): number {
+  return clampStars(n, STAR_ELITE);
+}
+
 export function nudgeStars(current: number, dir: 1 | -1): number {
-  return clampStars(current + dir * STAR_STEP);
+  return clampPersonalStars(current + dir * STAR_STEP);
 }
 
 /**
@@ -93,11 +103,10 @@ export function blendWeights(
   actual: number;
 } {
   const p = Math.min(1, Math.max(0, progress));
-  let adp = 0.45 - 0.25 * p;
-  let proj = 0.55 - 0.25 * p;
-  let actual = useActuals ? 0.0 + 0.5 * p : 0;
-  // Keep a little actual once the season has started
-  if (useActuals && p > 0) actual = Math.max(actual, 0.08);
+  // Season points ramp up fast: ~45% of the rating by midseason, ~70% by the end.
+  const adp = 0.45 - 0.3 * p;
+  const proj = 0.55 - 0.25 * p;
+  const actual = useActuals && p > 0 ? 0.15 + 0.85 * p : 0;
   const sum = adp + proj + actual;
   return { adp: adp / sum, proj: proj / sum, actual: actual / sum };
 }
@@ -162,16 +171,30 @@ export const TRADE_VALUE_STAR_ANCHOR = 3.5;
 /** Higher = steeper elite premium / deeper discount on depth. */
 export const TRADE_VALUE_EXPONENT = 2.8;
 
+/** 5★+ costs this many times a 5★: a haul, not untouchable. */
+export const ELITE_TV_MULTIPLIER = 1.6;
+
+const TV_AT_MAX =
+  TRADE_VALUE_FIRST * Math.pow(STAR_MAX / TRADE_VALUE_STAR_ANCHOR, TRADE_VALUE_EXPONENT);
+
 export function starsToTradeValue(stars: number): number {
   if (!Number.isFinite(stars) || stars <= 0) return 0;
-  const s = Math.min(STAR_MAX, Math.max(STAR_MIN, stars));
-  return TRADE_VALUE_FIRST * Math.pow(s / TRADE_VALUE_STAR_ANCHOR, TRADE_VALUE_EXPONENT);
+  const s = Math.min(STAR_ELITE, stars);
+  if (s <= STAR_MAX) {
+    return TRADE_VALUE_FIRST * Math.pow(s / TRADE_VALUE_STAR_ANCHOR, TRADE_VALUE_EXPONENT);
+  }
+  const t = (s - STAR_MAX) / (STAR_ELITE - STAR_MAX);
+  return TV_AT_MAX * (1 + (ELITE_TV_MULTIPLIER - 1) * t);
 }
 
-/** Inverse of starsToTradeValue (unclamped, unrounded). */
+/** Inverse of starsToTradeValue (unrounded, capped at 5★+). */
 export function tradeValueToStars(tv: number): number {
   if (!Number.isFinite(tv) || tv <= 0) return 0;
-  return TRADE_VALUE_STAR_ANCHOR * Math.pow(tv / TRADE_VALUE_FIRST, 1 / TRADE_VALUE_EXPONENT);
+  if (tv <= TV_AT_MAX) {
+    return TRADE_VALUE_STAR_ANCHOR * Math.pow(tv / TRADE_VALUE_FIRST, 1 / TRADE_VALUE_EXPONENT);
+  }
+  const t = (tv / TV_AT_MAX - 1) / (ELITE_TV_MULTIPLIER - 1);
+  return Math.min(STAR_ELITE, STAR_MAX + t * (STAR_ELITE - STAR_MAX));
 }
 
 export const BEST_ASSET_PREMIUM = 0.2;
@@ -190,9 +213,17 @@ export function packageTradeValue(starRatings: number[]): number {
 
 /** Star rating a single asset needs so packageTradeValue([stars]) ≈ packageTv. */
 export function starsForPackageValue(packageTv: number): number {
-  return clampStars(tradeValueToStars(packageTv / (1 + BEST_ASSET_PREMIUM)));
+  return clampPersonalStars(tradeValueToStars(packageTv / (1 + BEST_ASSET_PREMIUM)));
 }
 
+/** "4.5★", or "5★+" for the elite tier. */
 export function formatStars(n: number): string {
-  return `${clampStars(n).toFixed(1)}★`;
+  const v = clampPersonalStars(n);
+  return v > STAR_MAX ? "5★+" : `${v.toFixed(1)}★`;
+}
+
+/** Stepper/compact label without the star: "4.5" or "5+". */
+export function starsNumber(n: number): string {
+  const v = clampPersonalStars(n);
+  return v > STAR_MAX ? "5+" : v.toFixed(1);
 }

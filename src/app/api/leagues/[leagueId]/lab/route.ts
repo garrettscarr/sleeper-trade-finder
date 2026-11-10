@@ -8,7 +8,7 @@ import {
   type LabTeam,
 } from "@/lib/mock-offers";
 import { prisma } from "@/lib/prisma";
-import { packageTradeValue, starsForPackageValue, STAR_MAX } from "@/lib/stars";
+import { packageTradeValue, starsForPackageValue, STAR_ELITE, STAR_MAX } from "@/lib/stars";
 import { buildValuesPayload, type ValueRowPayload } from "@/lib/values-payload";
 
 type Params = { params: Promise<{ leagueId: string }> };
@@ -73,14 +73,18 @@ export async function POST(req: Request, { params }: Params) {
   }
 
   const referenceTv = packageTradeValue([subject.value || subject.market || 0.5]);
-  const maxTv = packageTradeValue([STAR_MAX]);
+  const maxTv = packageTradeValue([STAR_ELITE]);
   const maxed = low != null && low >= maxTv * 0.98;
+  const targets = offerTargets({ referenceTv, low, high });
+  // Above 5★ a fair return usually takes four pieces.
+  const haul = targets.some((t) => t > packageTradeValue([STAR_MAX]));
 
   const offers = maxed
     ? []
     : generateMockOffers({
         teams: [...byTeam.values()],
-        targets: offerTargets({ referenceTv, low, high }),
+        targets,
+        maxAssets: haul ? 4 : 3,
       }).map((o) => ({ ...o, impliedStars: starsForPackageValue(o.tv) }));
 
   return NextResponse.json({
@@ -117,8 +121,8 @@ export async function PUT(req: Request, { params }: Params) {
     });
     await prisma.personalValue.upsert({
       where: { teamId_playerId: { teamId: team.id, playerId: id } },
-      create: { leagueId, teamId: team.id, playerId: id, value: stars, tier: "fair" },
-      update: { value: stars },
+      create: { leagueId, teamId: team.id, playerId: id, value: stars, userSet: true, tier: "fair" },
+      update: { value: stars, userSet: true },
     });
     return NextResponse.json({ stars, previous: prev?.value ?? null });
   }
@@ -134,8 +138,8 @@ export async function PUT(req: Request, { params }: Params) {
   });
   await prisma.personalPickValue.upsert({
     where: { teamId_pickId: { teamId: team.id, pickId: id } },
-    create: { leagueId, teamId: team.id, pickId: id, value: stars, tier: "fair" },
-    update: { value: stars },
+    create: { leagueId, teamId: team.id, pickId: id, value: stars, userSet: true, tier: "fair" },
+    update: { value: stars, userSet: true },
   });
   return NextResponse.json({ stars, previous: prev?.value ?? null });
 }

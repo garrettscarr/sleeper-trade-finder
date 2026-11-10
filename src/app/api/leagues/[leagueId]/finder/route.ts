@@ -16,7 +16,7 @@ const schema = z.object({
   wantPlayerIds: z.array(z.string()).default([]),
   wantPickIds: z.array(z.string()).default([]),
   fairnessBand: z.number().min(0.01).max(0.5).default(0.1),
-  maxGiveAssets: z.number().int().min(1).max(3).default(2),
+  maxGiveAssets: z.number().int().min(1).max(4).default(2),
 });
 
 async function buildValueMaps(
@@ -176,21 +176,33 @@ export async function POST(req: Request, { params }: Params) {
     (a) => (values.partner.get(`${a.kind}:${a.id}`) ?? 0) === 0,
   );
 
-  const proposals = findTradePackages({
-    yourAssets,
-    wantAssets,
-    values,
-    fairnessBand: parsed.data.fairnessBand,
-    maxGiveAssets: parsed.data.maxGiveAssets,
-  });
+  const search = (maxGiveAssets: number) =>
+    findTradePackages({
+      yourAssets,
+      wantAssets,
+      values,
+      fairnessBand: parsed.data.fairnessBand,
+      maxGiveAssets,
+    });
+
+  let proposals = search(parsed.data.maxGiveAssets);
+  const warnings: string[] = [];
+  // 5★+ players can need a bigger haul than the chosen limit; show it rather than nothing.
+  if (proposals.length === 0 && parsed.data.maxGiveAssets < 4) {
+    proposals = search(4);
+    if (proposals.length > 0) {
+      warnings.push("It takes more pieces than you allowed, so these are up to 4-asset hauls.");
+    }
+  }
+  if (missingPartner.length) {
+    warnings.push(
+      `Partner has no value (and no baseline) for: ${missingPartner.map((a) => a.label).join(", ")}`,
+    );
+  }
 
   return NextResponse.json({
     proposals,
-    warnings: missingPartner.length
-      ? [
-          `Partner has no value (and no baseline) for: ${missingPartner.map((a) => a.label).join(", ")}`,
-        ]
-      : [],
+    warnings,
     partnerTeam: {
       id: partnerTeam.id,
       displayName: partnerTeam.displayName,

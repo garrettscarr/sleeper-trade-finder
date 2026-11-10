@@ -6,6 +6,7 @@ import {
   pickRoundToStars,
   seasonProgress,
   clampStars,
+  BASELINE_BLEND_VERSION,
 } from "./stars";
 import {
   fetchSeasonProjections,
@@ -191,12 +192,24 @@ export async function recomputeStarBaselines(leagueId: string) {
   await prisma.league.update({
     where: { id: leagueId },
     data: {
-      baselineSource: `stars:${profile}:${adpField}+${ptsField} [${ctx.labels.join(", ")}] (${usedProjSeason}, week ${week || 0})`,
+      baselineSource: `stars:${profile}:${adpField}+${ptsField} [${ctx.labels.join(", ")}] ${BASELINE_BLEND_VERSION} (${usedProjSeason}, week ${week || 0})`,
       scoringType: league.scoringType === "SF" || ctx.isSuperflex ? "SF" : league.scoringType,
     },
   });
 
-  // Seed only missing personal rows for new players/picks — never wipe saved ratings.
+  // Ratings a manager never touched keep following the market; their own picks are kept.
+  await prisma.$executeRaw`
+    UPDATE "PersonalValue" pv SET "value" = bv."value"
+    FROM "BaselineValue" bv
+    WHERE pv."leagueId" = ${leagueId} AND bv."leagueId" = pv."leagueId"
+      AND bv."playerId" = pv."playerId" AND pv."userSet" = false`;
+  await prisma.$executeRaw`
+    UPDATE "PersonalPickValue" pp SET "value" = bp."value"
+    FROM "BaselinePickValue" bp
+    WHERE pp."leagueId" = ${leagueId} AND bp."leagueId" = pp."leagueId"
+      AND bp."pickId" = pp."pickId" AND pp."userSet" = false`;
+
+  // Seed missing personal rows for new players/picks.
   const claimed = await prisma.team.findMany({
     where: { leagueId, claimToken: { not: null } },
   });

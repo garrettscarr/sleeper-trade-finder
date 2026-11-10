@@ -205,7 +205,7 @@ export function TradeFinderClient({ leagueId }: { leagueId: string }) {
             <div>
               <span className="label">Most assets you&apos;d give</span>
               <div className="seg">
-                {[1, 2, 3].map((n) => (
+                {[1, 2, 3, 4].map((n) => (
                   <button
                     key={n}
                     type="button"

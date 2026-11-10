@@ -1,9 +1,14 @@
 import {
   adpToStars,
   blendStars,
+  blendWeights,
+  clampStars,
+  formatStars,
   packageTradeValue,
   pointsPoolToStarMap,
   rankToStars,
+  seasonProgress,
+  starsForPackageValue,
   starsToTradeValue,
 } from "./stars";
 
@@ -57,5 +62,20 @@ assert(blendedElite - blendedDepth >= 1.0, "elite clearly above depth");
 assert(Math.abs(starsToTradeValue(3.5) - 100) < 0.01, "mid-1st anchor = 100");
 assert(starsToTradeValue(5.0) > 250, "5★ is multiple firsts");
 assert(packageTradeValue([2.0, 2.0]) < 0.45 * packageTradeValue([5.0]), "2×2nd << 5★");
+
+// 5★+ is a haul, not untouchable
+const elite = starsToTradeValue(5.5);
+assert(Math.abs(elite / starsToTradeValue(5.0) - 1.6) < 0.01, "5★+ = 1.6× a 5★");
+assert(starsForPackageValue(packageTradeValue([5.5])) === 5.5, "5★+ round-trips");
+assert(starsForPackageValue(packageTradeValue([5.0])) === 5.0, "5★ round-trips");
+assert(starsForPackageValue(packageTradeValue([3.5])) === 3.5, "3.5★ round-trips");
+assert(formatStars(5.5) === "5★+", "5★+ label");
+assert(clampStars(5.5) === 5, "market ratings stay capped at 5★");
+
+// Midseason, season points carry real weight
+const mid = blendWeights(seasonProgress(10), true);
+assert(mid.actual > 0.4, `week 10 points weight ${mid.actual.toFixed(2)}`);
+const late = blendWeights(seasonProgress(17), true);
+assert(late.actual > 0.6, `week 17 points weight ${late.actual.toFixed(2)}`);
 
 console.log("stars.test.ts passed");

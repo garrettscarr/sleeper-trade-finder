@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { PlayerPhoto } from "@/components/PlayerPhoto";
 import { PositionBadge } from "@/components/PositionBadge";
-import { clampStars, nudgeStars } from "@/lib/stars";
+import { clampPersonalStars, nudgeStars, starsNumber } from "@/lib/stars";
 
 export type ValueRow = {
   kind: "player" | "pick";
@@ -43,8 +43,8 @@ function AssetRow({
   onChange: (row: ValueRow, patch: Partial<ValueRow>) => void;
 }) {
   const meta = [
-    row.league != null ? `Lg ${clampStars(row.league).toFixed(1)}` : null,
-    row.market != null ? `Mkt ${clampStars(row.market).toFixed(1)}` : null,
+    row.league != null ? `Lg ${starsNumber(row.league)}` : null,
+    row.market != null ? `Mkt ${starsNumber(row.market)}` : null,
   ].filter(Boolean);
   return (
     <div className="asset-row">
@@ -82,7 +82,7 @@ function AssetRow({
           −
         </button>
         <div className="stepper-val">
-          {clampStars(row.value).toFixed(1)}
+          {starsNumber(row.value)}
           <small>★</small>
         </div>
         <button
@@ -123,7 +123,7 @@ export function ValuesEditor({
   const dirtyCount = Object.keys(pending).length;
 
   function updateRow(row: ValueRow, patch: Partial<ValueRow>) {
-    const next = { ...row, ...patch, value: clampStars(patch.value ?? row.value) };
+    const next = { ...row, ...patch, value: clampPersonalStars(patch.value ?? row.value) };
     const key = keyOf(next);
     setPending((p) => ({ ...p, [key]: next }));
     setStatus("");
@@ -140,7 +140,7 @@ export function ValuesEditor({
     const updates = Object.values(pending).map((r) => ({
       kind: r.kind,
       id: r.id,
-      value: clampStars(r.value),
+      value: clampPersonalStars(r.value),
       tier: (r.tier as "love" | "fair" | "fade") || "fair",
     }));
     const res = await fetch(`/api/leagues/${leagueId}/values`, {
@@ -190,8 +190,9 @@ export function ValuesEditor({
   return (
     <div className="stack">
       <p className="muted" style={{ margin: 0, fontSize: "0.9rem" }}>
-        Tap − / + to rate. Lg is the median of {claimedManagers || "all"} managers&apos;
-        ratings; Mkt is the market baseline.
+        Tap − / + to rate; past 5 is 5★+ (only for a haul). Lg is the median of{" "}
+        {claimedManagers || "all"} managers&apos; ratings; Mkt is the market. Players you
+        haven&apos;t touched follow Mkt.
       </p>
 
       <div className="seg">

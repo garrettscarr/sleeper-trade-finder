@@ -1,9 +1,11 @@
 import { after } from "next/server";
 import { prisma } from "./prisma";
+import { BASELINE_BLEND_VERSION } from "./stars";
 import {
   defaultPickValue,
   fetchAllPlayers,
   fetchLeague,
+  fetchNflState,
   fetchLeagueRosters,
   fetchLeagueUsers,
   fetchTradedPicks,
@@ -186,8 +188,8 @@ export async function ensureFreshRosters(leagueId: string) {
 
   try {
     const { addedPlayers } = await refreshRosters(leagueId);
-    if (addedPlayers > 0) {
-      // New players need market ★; that's slow, so finish it after the response.
+    if (addedPlayers > 0 || (await marketIsStale(leagueId))) {
+      // Market ★ is slow to rebuild, so finish it after the response.
       after(async () => {
         const { recomputeStarBaselines } = await import("./baseline");
         await recomputeStarBaselines(leagueId).catch(() => undefined);
@@ -196,4 +198,19 @@ export async function ensureFreshRosters(leagueId: string) {
   } catch {
     // Sleeper hiccup: keep showing the last good rosters; retry on a later visit.
   }
+}
+
+/** Market ★ should be rebuilt each NFL week (new points) or when the formula changes. */
+async function marketIsStale(leagueId: string): Promise<boolean> {
+  const league = await prisma.league.findUnique({
+    where: { id: leagueId },
+    select: { baselineSource: true },
+  });
+  const source = league?.baselineSource ?? "";
+  if (!source.includes(BASELINE_BLEND_VERSION)) return true;
+  const state = await fetchNflState();
+  const inSeason = state.season_type === "regular" || state.season_type === "post";
+  const week = inSeason ? Number(state.week || state.display_week || 0) : 0;
+  const computedWeek = Number(source.match(/week (\d+)\)/)?.[1] ?? -1);
+  return computedWeek !== week;
 }

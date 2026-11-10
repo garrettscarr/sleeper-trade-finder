@@ -1,5 +1,5 @@
 import { prisma } from "./prisma";
-import { clampStars } from "./stars";
+import { clampPersonalStars } from "./stars";
 
 export type ConsensusStat = {
   /** Median of claimed managers' personal stars (null if nobody has rated). */
@@ -12,8 +12,8 @@ function median(values: number[]): number | null {
   if (values.length === 0) return null;
   const sorted = [...values].sort((a, b) => a - b);
   const mid = Math.floor(sorted.length / 2);
-  if (sorted.length % 2 === 1) return clampStars(sorted[mid]);
-  return clampStars((sorted[mid - 1] + sorted[mid]) / 2);
+  if (sorted.length % 2 === 1) return clampPersonalStars(sorted[mid]);
+  return clampPersonalStars((sorted[mid - 1] + sorted[mid]) / 2);
 }
 
 /**

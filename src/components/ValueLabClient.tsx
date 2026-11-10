@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PlayerPhoto } from "@/components/PlayerPhoto";
 import { PositionBadge } from "@/components/PositionBadge";
-import { formatStars, packageTradeValue, starsForPackageValue, STAR_MAX } from "@/lib/stars";
+import { formatStars, packageTradeValue, starsForPackageValue, STAR_ELITE } from "@/lib/stars";
 
 type RosterRow = {
   kind: "player" | "pick";
@@ -353,15 +353,15 @@ export function ValueLabClient({ leagueId }: { leagueId: string }) {
           {!loadingOffers && maxed ? (
             <div className="panel stack">
               <p style={{ margin: 0 }}>
-                Nothing in the league beats what you&apos;ve turned down. You see{" "}
-                {subject?.label} as a top-tier asset.
+                You turned down everything up to a 5★+ haul. {subject?.label} goes in as 5★+:
+                still tradeable, but the Trade Finder will only show deals that are a real haul.
               </p>
               <button
                 className="btn"
                 type="button"
-                onClick={() => accept(packageTradeValue([STAR_MAX]))}
+                onClick={() => accept(packageTradeValue([STAR_ELITE]))}
               >
-                Set to {formatStars(STAR_MAX)}
+                Set to {formatStars(STAR_ELITE)}
               </button>
             </div>
           ) : null}

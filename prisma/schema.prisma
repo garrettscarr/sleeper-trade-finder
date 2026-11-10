@@ -77,6 +77,7 @@ model PersonalValue {
   teamId    String
   playerId  String
   value     Float
+  userSet   Boolean  @default(false) // false = still following market ★
   tier      String?
   note      String?
   updatedAt DateTime @updatedAt
@@ -119,6 +120,7 @@ model PersonalPickValue {
   teamId    String
   pickId    String
   value     Float
+  userSet   Boolean   @default(false) // false = still following market ★
   tier      String?
   note      String?
   updatedAt DateTime  @updatedAt

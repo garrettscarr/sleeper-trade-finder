@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireClaimedTeam } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
+import { STAR_ELITE } from "@/lib/stars";
 import { buildValuesPayload } from "@/lib/values-payload";
 
 type Params = { params: Promise<{ leagueId: string }> };
@@ -10,7 +11,7 @@ const starValue = z
   .number()
   .finite()
   .min(0)
-  .max(5)
+  .max(STAR_ELITE)
   .refine((n) => Math.abs(n * 2 - Math.round(n * 2)) < 1e-9, {
     message: "Stars must be in 0.5 steps",
   });
@@ -59,10 +60,12 @@ export async function PUT(req: Request, { params }: Params) {
           teamId: team.id,
           playerId: u.id,
           value: u.value,
+          userSet: true,
           tier: u.tier ?? "fair",
         },
         update: {
           value: u.value,
+          userSet: true,
           tier: u.tier ?? undefined,
         },
       });
@@ -74,10 +77,12 @@ export async function PUT(req: Request, { params }: Params) {
           teamId: team.id,
           pickId: u.id,
           value: u.value,
+          userSet: true,
           tier: u.tier ?? "fair",
         },
         update: {
           value: u.value,
+          userSet: true,
           tier: u.tier ?? undefined,
         },
       });
