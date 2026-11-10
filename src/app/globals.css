@@ -344,11 +344,344 @@ textarea {
   cursor: pointer;
 }
 
-@media (max-width: 720px) {
+/* ---------- Phone-first app chrome ---------- */
+
+:root {
+  --tabbar-h: 0px;
+}
+
+body {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 16px stops iOS Safari from zooming into inputs on focus */
+.input {
+  font-size: 1rem;
+}
+
+summary {
+  min-height: 32px;
+}
+
+.page-title {
+  font-size: clamp(1.5rem, 6vw, 2.2rem);
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin: 0.2rem 0 0.25rem;
+}
+
+.league-shell {
+  padding-bottom: calc(var(--tabbar-h) + 1.5rem);
+}
+
+.league-tabs {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.league-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  color: var(--muted);
+}
+
+.league-tab svg {
+  width: 18px;
+  height: 18px;
+}
+
+.league-tab.active {
+  color: var(--ink);
+  border-color: var(--accent-dim);
+  background: rgba(62, 207, 142, 0.12);
+}
+
+.seg {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  background: var(--bg0);
+  border: 1px solid var(--line);
+  border-radius: 0.7rem;
+  padding: 3px;
+}
+
+.seg button {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  min-height: 40px;
+  border-radius: 0.55rem;
+  cursor: pointer;
+}
+
+.seg button.on {
+  background: var(--bg2);
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.chip-scroll {
+  display: flex;
+  gap: 0.4rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  margin: 0 -0.25rem;
+  padding: 0 0.25rem;
+}
+
+.chip-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.4rem 0.85rem;
+  min-height: 36px;
+  background: transparent;
+  color: var(--muted);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.chip.on {
+  color: var(--ink);
+  border-color: var(--accent-dim);
+  background: rgba(62, 207, 142, 0.14);
+}
+
+.asset-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.asset-row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  gap: 0.65rem;
+  align-items: center;
+  padding: 0.65rem 0.7rem;
+  background: var(--bg1);
+  border: 1px solid var(--line);
+  border-radius: 0.85rem;
+}
+
+.asset-main {
+  min-width: 0;
+}
+
+.asset-name {
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.asset-meta {
+  color: var(--muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tier-chips {
+  display: flex;
+  gap: 0.3rem;
+  margin-top: 0.35rem;
+}
+
+.tier-chips .chip {
+  padding: 0.1rem 0.55rem;
+  min-height: 28px;
+  font-size: 0.75rem;
+}
+
+.chip-love.on {
+  color: var(--accent);
+  border-color: rgba(62, 207, 142, 0.5);
+}
+
+.chip-fair.on {
+  color: var(--warn);
+  border-color: rgba(232, 184, 74, 0.45);
+  background: rgba(232, 184, 74, 0.1);
+}
+
+.chip-fade.on {
+  color: var(--danger);
+  border-color: rgba(224, 122, 106, 0.5);
+  background: rgba(224, 122, 106, 0.1);
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.stepper button {
+  width: 40px;
+  height: 40px;
+  border-radius: 0.65rem;
+  border: 1px solid var(--line);
+  background: var(--bg2);
+  color: var(--ink);
+  font-size: 1.3rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.stepper button:active {
+  background: var(--accent-dim);
+}
+
+.stepper-val {
+  min-width: 2.9rem;
+  text-align: center;
+  font-weight: 750;
+  font-size: 1.05rem;
+}
+
+.stepper-val small {
+  color: var(--warn);
+  margin-left: 1px;
+}
+
+.group-head {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.save-bar {
+  position: sticky;
+  bottom: calc(var(--tabbar-h) + 0.75rem);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.65rem 0.6rem 0.9rem;
+  background: rgba(24, 32, 40, 0.97);
+  border: 1px solid var(--line);
+  border-radius: 0.9rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+}
+
+.pick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 0.5rem;
+}
+
+.pick-tile {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 56px;
+  padding: 0.5rem 1.4rem 0.5rem 0.55rem;
+  background: var(--bg1);
+  border: 1px solid var(--line);
+  border-radius: 0.8rem;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+
+.pick-tile.on {
+  border-color: var(--accent);
+  background: rgba(62, 207, 142, 0.12);
+}
+
+.pick-tile-text {
+  display: grid;
+  min-width: 0;
+}
+
+.pick-tile-text strong {
+  font-size: 0.85rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pick-tile-text span {
+  font-size: 0.75rem;
+}
+
+.pick-check {
+  position: absolute;
+  top: 0.3rem;
+  right: 0.45rem;
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.trade-sides {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.action-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.action-list .btn {
+  width: 100%;
+  min-height: 48px;
+}
+
+.team-list {
+  display: grid;
+}
+
+.team-list-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.team-list-row:last-child {
+  border-bottom: 0;
+}
+
+.league-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+@media (max-width: 760px) {
+  :root {
+    --tabbar-h: calc(62px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .shell {
+    width: calc(100% - 1.5rem);
+  }
+
+  .nav {
+    padding: 0.8rem 0;
+    margin-bottom: 1rem;
+    flex-wrap: nowrap;
+  }
+
   .nav-links {
-    width: 100%;
-    flex-wrap: wrap;
-    gap: 0.65rem;
     font-size: 0.9rem;
   }
 
@@ -359,24 +692,69 @@ textarea {
 
   .panel {
     padding: 1rem;
+    border-radius: 0.9rem;
   }
 
   .hero {
-    padding: 1.25rem 0 1.75rem;
+    padding: 0.75rem 0 1rem;
+  }
+
+  .hero h1 {
+    font-size: 2rem;
   }
 
   .metrics {
-    grid-template-columns: 1fr;
+    gap: 0.35rem;
   }
 
-  .table th,
-  .table td {
-    padding: 0.55rem 0.3rem;
-    font-size: 0.9rem;
+  .metric {
+    padding: 0.45rem 0.5rem;
   }
 
-  .nudge button {
-    width: 2.2rem;
-    height: 2.2rem;
+  .metric strong {
+    font-size: 0.85rem;
+  }
+
+  .pick-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .league-tabs {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    margin: 0;
+    gap: 0;
+    flex-wrap: nowrap;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    padding: 0.3rem 0.25rem env(safe-area-inset-bottom, 0px);
+    background: rgba(12, 16, 20, 0.96);
+    border-top: 1px solid var(--line);
+    backdrop-filter: blur(10px);
+  }
+
+  .league-tab {
+    flex-direction: column;
+    gap: 0.15rem;
+    border: 0;
+    border-radius: 0.6rem;
+    padding: 0.4rem 0;
+    font-size: 0.7rem;
+    min-height: 54px;
+    justify-content: center;
+  }
+
+  .league-tab svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .league-tab.active {
+    background: transparent;
+    color: var(--accent);
   }
 }

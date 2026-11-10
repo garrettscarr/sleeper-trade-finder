@@ -201,7 +201,7 @@ export async function recomputeStarBaselines(leagueId: string) {
     where: { leagueId, claimToken: { not: null } },
   });
   for (const team of claimed) {
-    await seedPersonalValuesForTeam(leagueId, team.id, { overwrite: false });
+    await seedPersonalValuesForTeam(leagueId, team.id);
   }
 
   return {

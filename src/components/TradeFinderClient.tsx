@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { PlayerPhoto } from "@/components/PlayerPhoto";
 
 type PartnerPayload = {
@@ -38,21 +38,23 @@ type Proposal = {
   reason: string;
 };
 
+const POSITION_ORDER = ["QB", "RB", "WR", "TE"];
+
 function AssetPhotos({ assets }: { assets: AssetChip[] }) {
   return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: "0.45rem", marginTop: "0.35rem" }}>
+    <div className="stack" style={{ gap: "0.4rem", marginTop: "0.4rem" }}>
       {assets.map((a) => (
         <span
           key={`${a.kind}-${a.sleeperId || a.sleeperAvatarId || a.label}`}
-          style={{ display: "inline-flex", alignItems: "center", gap: "0.35rem" }}
+          style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}
         >
           <PlayerPhoto
             sleeperPlayerId={a.kind === "player" ? a.sleeperId : null}
             sleeperAvatarId={a.kind === "pick" ? a.sleeperAvatarId : null}
             name={a.label}
-            size={32}
+            size={34}
           />
-          <span style={{ fontSize: "0.9rem" }}>{a.label}</span>
+          <span style={{ fontSize: "0.95rem" }}>{a.label}</span>
         </span>
       ))}
     </div>
@@ -68,9 +70,11 @@ export function TradeFinderClient({ leagueId }: { leagueId: string }) {
   const [maxGive, setMaxGive] = useState(2);
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
+  const [searched, setSearched] = useState(false);
   const [error, setError] = useState("");
   const [warnings, setWarnings] = useState<string[]>([]);
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -96,9 +100,22 @@ export function TradeFinderClient({ leagueId }: { leagueId: string }) {
     [partners, partnerId],
   );
 
+  const sortedPlayers = useMemo(() => {
+    if (!partner) return [];
+    const rank = (p: string | null) => {
+      const i = POSITION_ORDER.indexOf(p || "");
+      return i === -1 ? 99 : i;
+    };
+    return [...partner.players].sort(
+      (a, b) => rank(a.position) - rank(b.position) || a.label.localeCompare(b.label),
+    );
+  }, [partner]);
+
   function toggle(list: string[], id: string, setter: (v: string[]) => void) {
     setter(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
   }
+
+  const selectedCount = wantPlayers.length + wantPicks.length;
 
   async function search() {
     setSearching(true);
@@ -118,12 +135,17 @@ export function TradeFinderClient({ leagueId }: { leagueId: string }) {
     });
     const data = await res.json();
     setSearching(false);
+    setSearched(true);
     if (!res.ok) {
       setError(data.error || "Search failed");
       return;
     }
     setProposals(data.proposals || []);
     setWarnings(data.warnings || []);
+    window.setTimeout(
+      () => resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      50,
+    );
   }
 
   if (loading) return <p className="muted">Loading Trade Finder…</p>;
@@ -131,33 +153,39 @@ export function TradeFinderClient({ leagueId }: { leagueId: string }) {
   return (
     <div className="stack">
       <div className="panel stack">
-        <div className="grid-2">
-          <div>
-            <label className="label" htmlFor="partner">
-              Trade partner
-            </label>
-            <select
-              className="input"
-              id="partner"
-              value={partnerId}
-              onChange={(e) => {
-                setPartnerId(e.target.value);
-                setWantPlayers([]);
-                setWantPicks([]);
-              }}
-            >
-              {partners.map((p) => (
-                <option key={p.team.id} value={p.team.id}>
-                  {p.team.teamName || p.team.displayName}
-                  {p.team.claimed ? "" : " (no personal board yet)"}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="grid-2">
+        <div>
+          <label className="label" htmlFor="partner">
+            Trade partner
+          </label>
+          <select
+            className="input"
+            id="partner"
+            value={partnerId}
+            onChange={(e) => {
+              setPartnerId(e.target.value);
+              setWantPlayers([]);
+              setWantPicks([]);
+              setProposals([]);
+              setSearched(false);
+            }}
+          >
+            {partners.map((p) => (
+              <option key={p.team.id} value={p.team.id}>
+                {p.team.teamName || p.team.displayName}
+                {p.team.claimed ? "" : " (no board yet)"}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <details>
+          <summary className="muted" style={{ cursor: "pointer" }}>
+            Options: within {band}% · up to {maxGive} asset{maxGive === 1 ? "" : "s"} from you
+          </summary>
+          <div className="stack" style={{ marginTop: "0.75rem" }}>
             <div>
               <label className="label" htmlFor="band">
-                Fairness band ({band}%)
+                How fair to your partner ({band}%)
               </label>
               <input
                 className="input"
@@ -170,121 +198,114 @@ export function TradeFinderClient({ leagueId }: { leagueId: string }) {
               />
             </div>
             <div>
-              <label className="label" htmlFor="maxGive">
-                Max assets you give
-              </label>
-              <select
-                className="input"
-                id="maxGive"
-                value={maxGive}
-                onChange={(e) => setMaxGive(Number(e.target.value))}
-              >
-                <option value={1}>1</option>
-                <option value={2}>2</option>
-                <option value={3}>3</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {partner ? (
-          <div className="grid-2">
-            <div>
-              <h3 style={{ margin: "0 0 0.5rem" }}>Want from partner</h3>
-              <div className="stack">
-                {partner.players.map((p) => (
-                  <label key={p.id} style={{ display: "flex", gap: "0.55rem", alignItems: "center" }}>
-                    <input
-                      type="checkbox"
-                      checked={wantPlayers.includes(p.id)}
-                      onChange={() => toggle(wantPlayers, p.id, setWantPlayers)}
-                    />
-                    <PlayerPhoto
-                      sleeperPlayerId={p.sleeperPlayerId}
-                      name={p.label}
-                      size={34}
-                    />
-                    <span>
-                      {p.label}{" "}
-                      <span className="muted">{p.position}</span>
-                    </span>
-                  </label>
+              <span className="label">Most assets you&apos;d give</span>
+              <div className="seg">
+                {[1, 2, 3].map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    className={maxGive === n ? "on" : ""}
+                    onClick={() => setMaxGive(n)}
+                  >
+                    {n}
+                  </button>
                 ))}
               </div>
             </div>
-            <div>
-              <h3 style={{ margin: "0 0 0.5rem" }}>Want picks</h3>
-              <div className="stack">
-                {partner.picks.length === 0 ? (
-                  <p className="muted">No future picks on this roster.</p>
-                ) : (
-                  partner.picks.map((p) => (
-                    <label
-                      key={p.id}
-                      style={{ display: "flex", gap: "0.55rem", alignItems: "center" }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={wantPicks.includes(p.id)}
-                        onChange={() => toggle(wantPicks, p.id, setWantPicks)}
-                      />
-                      <PlayerPhoto
-                        sleeperAvatarId={p.sleeperAvatarId}
-                        name={p.label}
-                        size={34}
-                      />
-                      <span>{p.label}</span>
-                    </label>
-                  ))
-                )}
-              </div>
-            </div>
           </div>
-        ) : null}
-
-        {error ? <p className="error">{error}</p> : null}
-        <button className="btn" onClick={search} disabled={searching || !partnerId}>
-          {searching ? "Finding packages…" : "Find trades"}
-        </button>
+        </details>
       </div>
 
-      {warnings.map((w) => (
-        <p key={w} className="error">
-          {w}
-        </p>
-      ))}
+      {partner ? (
+        <div className="stack">
+          <h3 style={{ margin: 0 }}>Tap what you want</h3>
+          <div className="pick-grid">
+            {sortedPlayers.map((p) => {
+              const on = wantPlayers.includes(p.id);
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  className={`pick-tile ${on ? "on" : ""}`}
+                  aria-pressed={on}
+                  onClick={() => toggle(wantPlayers, p.id, setWantPlayers)}
+                >
+                  <PlayerPhoto sleeperPlayerId={p.sleeperPlayerId} name={p.label} size={36} />
+                  <span className="pick-tile-text">
+                    <strong>{p.label}</strong>
+                    <span className="muted">{p.position}</span>
+                  </span>
+                  {on ? <span className="pick-check">✓</span> : null}
+                </button>
+              );
+            })}
+          </div>
+          {partner.picks.length > 0 ? (
+            <>
+              <h3 style={{ margin: "0.5rem 0 0" }}>Picks</h3>
+              <div className="pick-grid">
+                {partner.picks.map((p) => {
+                  const on = wantPicks.includes(p.id);
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className={`pick-tile ${on ? "on" : ""}`}
+                      aria-pressed={on}
+                      onClick={() => toggle(wantPicks, p.id, setWantPicks)}
+                    >
+                      <PlayerPhoto sleeperAvatarId={p.sleeperAvatarId} name={p.label} size={36} />
+                      <span className="pick-tile-text">
+                        <strong>{p.label}</strong>
+                      </span>
+                      {on ? <span className="pick-check">✓</span> : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          ) : null}
+        </div>
+      ) : null}
 
-      <div className="stack">
-        {proposals.length === 0 && !searching ? (
+      <div ref={resultsRef} className="stack" style={{ scrollMarginTop: "1rem" }}>
+        {error ? <p className="error">{error}</p> : null}
+        {warnings.map((w) => (
+          <p key={w} className="error">
+            {w}
+          </p>
+        ))}
+        {searched && !searching && proposals.length === 0 && !error ? (
           <p className="muted">
-            Select assets you want and run Find trades. Matching uses a premium curve
-            (mid-1st ≈ 100) so elites cost multiple firsts — not raw ★ addition.
+            No fair packages found. Try a wider fairness range or allow more assets in Options.
           </p>
         ) : null}
+        {proposals.length > 0 ? <h3 style={{ margin: 0 }}>Offers they&apos;d accept</h3> : null}
         {proposals.map((p, idx) => (
           <div className="proposal" key={idx}>
-            <div className="grid-2">
+            <div className="trade-sides">
               <div>
-                <strong>You give</strong>
+                <span className="label" style={{ margin: 0 }}>
+                  You give
+                </span>
                 <AssetPhotos assets={p.give} />
               </div>
               <div>
-                <strong>You get</strong>
+                <span className="label" style={{ margin: 0 }}>
+                  You get
+                </span>
                 <AssetPhotos assets={p.receive} />
               </div>
             </div>
-            <p className="muted" style={{ margin: "0.65rem 0 0" }}>
-              {p.reason}
-            </p>
             <div className="metrics">
               <div className="metric">
-                <span>Partner value</span>
+                <span>Partner</span>
                 <strong>
                   {Math.round(p.partnerGiveTotal)} → {Math.round(p.partnerReceiveTotal)}
                 </strong>
               </div>
               <div className="metric">
-                <span>Your board</span>
+                <span>You</span>
                 <strong>
                   {Math.round(p.youGiveTotal)} → {Math.round(p.youReceiveTotal)}
                 </strong>
@@ -292,13 +313,29 @@ export function TradeFinderClient({ leagueId }: { leagueId: string }) {
               <div className="metric">
                 <span>Market</span>
                 <strong>
-                  {Math.round(p.communityGiveTotal)} →{" "}
-                  {Math.round(p.communityReceiveTotal)}
+                  {Math.round(p.communityGiveTotal)} → {Math.round(p.communityReceiveTotal)}
                 </strong>
               </div>
             </div>
+            <p className="muted" style={{ margin: "0.6rem 0 0", fontSize: "0.85rem" }}>
+              {p.reason}
+            </p>
           </div>
         ))}
+      </div>
+
+      <div className="save-bar">
+        <span className="muted">
+          {selectedCount === 0 ? "Tap players or picks above" : `${selectedCount} selected`}
+        </span>
+        <button
+          className="btn"
+          type="button"
+          onClick={search}
+          disabled={searching || !partnerId || selectedCount === 0}
+        >
+          {searching ? "Finding…" : "Find trades"}
+        </button>
       </div>
     </div>
   );

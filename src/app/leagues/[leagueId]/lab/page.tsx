@@ -15,30 +15,15 @@ export default async function ValueLabPage({ params }: Props) {
   if (!league) notFound();
 
   return (
-    <div className="stack" style={{ paddingBottom: "3rem" }}>
+    <div className="stack">
       <div>
-        <p className="muted" style={{ margin: 0 }}>
-          <Link href={`/leagues/${league.id}`}>{league.name}</Link> / Value Lab
+        <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
+          <Link href={`/leagues/${league.id}`}>‹ {league.name}</Link>
         </p>
-        <h1 style={{ margin: "0.35rem 0" }}>Value Lab</h1>
-        <p className="muted" style={{ margin: 0 }}>
-          Price your players by reacting to mock offers instead of guessing stars.
+        <h1 className="page-title">Value Lab</h1>
+        <p className="muted" style={{ margin: 0, fontSize: "0.9rem" }}>
+          Pick the offers you&apos;d take and your ratings set themselves.
         </p>
-      </div>
-
-      <div className="tabs">
-        <Link className="tab" href={`/leagues/${league.id}`}>
-          Home
-        </Link>
-        <Link className="tab" href={`/leagues/${league.id}/values`}>
-          My values
-        </Link>
-        <Link className="tab active" href={`/leagues/${league.id}/lab`}>
-          Value Lab
-        </Link>
-        <Link className="tab" href={`/leagues/${league.id}/finder`}>
-          Trade Finder
-        </Link>
       </div>
 
       <ValueLabClient leagueId={league.id} />

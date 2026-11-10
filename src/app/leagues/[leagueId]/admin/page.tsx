@@ -15,30 +15,12 @@ export default async function AdminPage({ params }: Props) {
   if (!league) notFound();
 
   return (
-    <div className="stack" style={{ paddingBottom: "3rem" }}>
+    <div className="stack">
       <div>
-        <p className="muted" style={{ margin: 0 }}>
-          <Link href={`/leagues/${league.id}`}>{league.name}</Link> / Admin
+        <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
+          <Link href={`/leagues/${league.id}`}>‹ {league.name}</Link>
         </p>
-        <h1 style={{ margin: "0.35rem 0" }}>Admin</h1>
-      </div>
-
-      <div className="tabs">
-        <Link className="tab" href={`/leagues/${league.id}`}>
-          Home
-        </Link>
-        <Link className="tab" href={`/leagues/${league.id}/values`}>
-          My values
-        </Link>
-        <Link className="tab" href={`/leagues/${league.id}/lab`}>
-          Value Lab
-        </Link>
-        <Link className="tab" href={`/leagues/${league.id}/finder`}>
-          Trade Finder
-        </Link>
-        <Link className="tab active" href={`/leagues/${league.id}/admin`}>
-          Admin
-        </Link>
+        <h1 className="page-title">Admin</h1>
       </div>
 
       <AdminPanel

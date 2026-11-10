@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Nav } from "@/components/Nav";
 import { SessionRestore } from "@/components/SessionRestore";
 import "./globals.css";
@@ -7,6 +7,11 @@ export const metadata: Metadata = {
   title: "Sleeper Trade Finder",
   description:
     "League trade finder that matches deals using your league mates' personal values. Invite codes unlock a device — no accounts or passwords.",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0f1419",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

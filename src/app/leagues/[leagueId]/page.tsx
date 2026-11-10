@@ -2,11 +2,20 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ClaimTeamForm } from "@/components/ClaimTeamForm";
 import { CopyAdminLink, CopyInviteLink } from "@/components/CopyInviteLink";
+import { PlayerPhoto } from "@/components/PlayerPhoto";
 import { SignInAnotherDevice } from "@/components/SignInAnotherDevice";
 import { requireLeagueAccess } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
 
 type Props = { params: Promise<{ leagueId: string }> };
+
+/** Relative time, so it reads right regardless of the server's timezone. */
+function timeAgo(date: Date): string {
+  const minutes = Math.max(0, Math.round((Date.now() - date.getTime()) / 60000));
+  if (minutes < 1) return "just now";
+  if (minutes < 60) return `${minutes} min ago`;
+  return `${Math.round(minutes / 60)} hr ago`;
+}
 
 export default async function LeagueHomePage({ params }: Props) {
   const { leagueId } = await params;
@@ -48,101 +57,48 @@ export default async function LeagueHomePage({ params }: Props) {
   );
   const completionByTeam = new Map(completion.map((c) => [c.teamId, c]));
 
+  const syncedAt = league.lastSyncedAt ? timeAgo(league.lastSyncedAt) : null;
+
   return (
-    <div className="stack" style={{ paddingBottom: "3rem" }}>
+    <div className="stack" style={{ paddingBottom: "1rem" }}>
       <div>
-        <p className="muted" style={{ margin: 0 }}>
-          <Link href="/dashboard">Leagues</Link> / {league.name}
+        <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
+          <Link href="/dashboard">‹ My leagues</Link>
         </p>
-        <h1 style={{ margin: "0.35rem 0", letterSpacing: "-0.03em" }}>{league.name}</h1>
-        <p className="muted" style={{ margin: 0 }}>
-          Season {league.season} · {league.scoringType} · Sleeper {league.sleeperLeagueId}
-          {league.lastSyncedAt ? ` · synced ${league.lastSyncedAt.toLocaleString()}` : ""}
+        <h1 className="page-title">{league.name}</h1>
+        <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
+          {league.season} · {league.scoringType}
+          {isAdmin ? " · you're commissioner" : ""}
+          {syncedAt ? ` · rosters updated ${syncedAt}` : ""}
         </p>
-      </div>
-
-      <div className="tabs">
-        <Link className="tab active" href={`/leagues/${league.id}`}>
-          Home
-        </Link>
-        <Link className="tab" href={`/leagues/${league.id}/values`}>
-          My values
-        </Link>
-        <Link className="tab" href={`/leagues/${league.id}/lab`}>
-          Value Lab
-        </Link>
-        <Link className="tab" href={`/leagues/${league.id}/finder`}>
-          Trade Finder
-        </Link>
-        {isAdmin ? (
-          <Link className="tab" href={`/leagues/${league.id}/admin`}>
-            Admin
-          </Link>
-        ) : null}
-      </div>
-
-      <div className="grid-2">
-        <div className="panel stack">
-          <h2 style={{ margin: 0 }}>League status</h2>
-          <p className="muted" style={{ margin: 0 }}>
-            Star baselines:{" "}
-            {league._count.baselineValues > 0
-              ? `${league._count.baselineValues} players (${league.baselineSource || "computed"})`
-              : "not computed yet — admin can recompute"}
-          </p>
-          <p className="muted" style={{ margin: 0 }}>
-            {isAdmin ? "Commissioner" : "Manager"}
-            {myTeam
-              ? ` · team ${myTeam.claimedLabel || myTeam.teamName || myTeam.displayName}`
-              : " · team not claimed"}
-          </p>
-          {myTeam ? (
-            <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-              <Link className="btn" href={`/leagues/${league.id}/lab`}>
-                Price players with mock trades
-              </Link>
-              <Link className="btn btn-secondary" href={`/leagues/${league.id}/values`}>
-                Edit my values
-              </Link>
-              <Link className="btn btn-secondary" href={`/leagues/${league.id}/finder`}>
-                Open Trade Finder
-              </Link>
-            </div>
-          ) : (
-            <p className="muted" style={{ margin: 0 }}>
-              Claim your Sleeper team below to start a personal board.
-            </p>
-          )}
-        </div>
-
-        <div className="panel stack">
-          <h2 style={{ margin: 0 }}>Invite managers</h2>
-          <p className="muted" style={{ margin: 0 }}>
-            League mates can just enter their Sleeper username on the home page. Or text them
-            this link:
-          </p>
-          <CopyInviteLink inviteCode={league.inviteCode} />
-          {isAdmin ? (
-            <details>
-              <summary className="muted" style={{ cursor: "pointer", fontSize: "0.85rem" }}>
-                Backup admin code (private)
-              </summary>
-              <div style={{ marginTop: "0.5rem" }}>
-                <CopyAdminLink adminCode={league.adminCode} />
-              </div>
-            </details>
-          ) : null}
-        </div>
       </div>
 
       {myTeam ? (
         <div className="panel stack">
-          <h2 style={{ margin: 0 }}>Your other devices</h2>
-          <SignInAnotherDevice />
+          <div className="group-head">
+            <PlayerPhoto sleeperAvatarId={myTeam.avatar} name={myTeam.displayName} size={36} />
+            <strong style={{ fontSize: "1.05rem" }}>
+              {myTeam.claimedLabel || myTeam.teamName || myTeam.displayName}
+            </strong>
+          </div>
+          <div className="action-list">
+            <Link className="btn" href={`/leagues/${league.id}/lab`}>
+              Price my players with mock trades
+            </Link>
+            <Link className="btn btn-secondary" href={`/leagues/${league.id}/finder`}>
+              Find trades
+            </Link>
+            <Link className="btn btn-secondary" href={`/leagues/${league.id}/values`}>
+              Edit my ratings
+            </Link>
+          </div>
+          {league._count.baselineValues === 0 ? (
+            <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
+              Market ratings aren&apos;t computed yet. The commissioner can run them from Admin.
+            </p>
+          ) : null}
         </div>
-      ) : null}
-
-      {!myTeam ? (
+      ) : (
         <div className="panel">
           <h2 style={{ marginTop: 0 }}>Which team is yours?</h2>
           <ClaimTeamForm
@@ -156,48 +112,59 @@ export default async function LeagueHomePage({ params }: Props) {
             }))}
           />
         </div>
-      ) : null}
+      )}
 
-      <div className="panel">
-        <h2 style={{ marginTop: 0 }}>Teams</h2>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Manager</th>
-              <th>Team</th>
-              <th>Claim</th>
-              <th>Values</th>
-            </tr>
-          </thead>
-          <tbody>
-            {league.teams.map((team) => {
-              const c = completionByTeam.get(team.id);
-              return (
-                <tr key={team.id}>
-                  <td>{team.displayName}</td>
-                  <td>{team.teamName || "—"}</td>
-                  <td>
-                    {team.claimToken ? (
-                      <span className="pill love">claimed</span>
-                    ) : (
-                      <span className="pill">open</span>
-                    )}
-                  </td>
-                  <td>
-                    {!team.claimToken ? (
-                      <span className="muted">—</span>
-                    ) : (
-                      <span className={`pill ${c?.status === "ready" ? "love" : "fair"}`}>
-                        {c?.pct ?? 0}% board
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <div className="panel stack">
+        <h2 style={{ margin: 0 }}>Teams</h2>
+        <div className="team-list">
+          {league.teams.map((team) => {
+            const c = completionByTeam.get(team.id);
+            return (
+              <div className="team-list-row" key={team.id}>
+                <PlayerPhoto sleeperAvatarId={team.avatar} name={team.displayName} size={32} />
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <div className="asset-name">{team.teamName || team.displayName}</div>
+                  {team.teamName ? (
+                    <div className="asset-meta">{team.displayName}</div>
+                  ) : null}
+                </div>
+                {team.claimToken ? (
+                  <span className={`pill ${c?.status === "ready" ? "love" : "fair"}`}>
+                    {c?.pct ?? 0}% rated
+                  </span>
+                ) : (
+                  <span className="pill">not on app</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
+
+      <div className="panel stack">
+        <h2 style={{ margin: 0 }}>Invite your league</h2>
+        <p className="muted" style={{ margin: 0, fontSize: "0.9rem" }}>
+          League mates can just enter their Sleeper username on the home page, or open this link:
+        </p>
+        <CopyInviteLink inviteCode={league.inviteCode} />
+        {isAdmin ? (
+          <details>
+            <summary className="muted" style={{ cursor: "pointer", fontSize: "0.85rem" }}>
+              Backup admin code (private)
+            </summary>
+            <div style={{ marginTop: "0.5rem" }}>
+              <CopyAdminLink adminCode={league.adminCode} />
+            </div>
+          </details>
+        ) : null}
+      </div>
+
+      {myTeam ? (
+        <div className="panel stack">
+          <h2 style={{ margin: 0 }}>Your other devices</h2>
+          <SignInAnotherDevice />
+        </div>
+      ) : null}
     </div>
   );
 }

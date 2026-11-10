@@ -15,31 +15,16 @@ export default async function FinderPage({ params }: Props) {
   if (!league) notFound();
 
   return (
-    <div className="stack" style={{ paddingBottom: "3rem" }}>
+    <div className="stack">
       <div>
-        <p className="muted" style={{ margin: 0 }}>
-          <Link href={`/leagues/${league.id}`}>{league.name}</Link> / Trade Finder
+        <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
+          <Link href={`/leagues/${league.id}`}>‹ {league.name}</Link>
         </p>
-        <h1 style={{ margin: "0.35rem 0" }}>Trade Finder</h1>
-        <p className="muted" style={{ margin: 0 }}>
-          Packages are matched primarily to your partner&apos;s personal values (falling back
-          to community baseline when needed).
+        <h1 className="page-title">Find trades</h1>
+        <p className="muted" style={{ margin: 0, fontSize: "0.9rem" }}>
+          Offers are priced on your partner&apos;s own ratings, so they&apos;re ones they&apos;d
+          actually take.
         </p>
-      </div>
-
-      <div className="tabs">
-        <Link className="tab" href={`/leagues/${league.id}`}>
-          Home
-        </Link>
-        <Link className="tab" href={`/leagues/${league.id}/values`}>
-          My values
-        </Link>
-        <Link className="tab" href={`/leagues/${league.id}/lab`}>
-          Value Lab
-        </Link>
-        <Link className="tab active" href={`/leagues/${league.id}/finder`}>
-          Trade Finder
-        </Link>
       </div>
 
       <TradeFinderClient leagueId={league.id} />

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ClearSessionButton } from "@/components/ClearSessionButton";
 import { prisma } from "@/lib/prisma";
 import { getMembership, getSession } from "@/lib/session";
 
@@ -63,36 +64,38 @@ export default async function DashboardPage() {
                 t.claimToken === membership.claimToken,
             );
             return (
-              <Link key={league.id} href={`/leagues/${league.id}`} className="panel">
-                <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem" }}>
-                  <div>
-                    <h2 style={{ margin: "0 0 0.35rem" }}>{league.name}</h2>
-                    <p className="muted" style={{ margin: 0 }}>
-                      Season {league.season} · {league.scoringType} · {claimed}/
-                      {league.teams.length} teams claimed
-                      {membership
-                        ? isCommissionerClaim(membership, league.teams)
-                          ? " · commissioner"
-                          : " · manager"
-                        : ""}
+              <Link key={league.id} href={`/leagues/${league.id}`} className="panel league-card">
+                <div style={{ minWidth: 0 }}>
+                  <h2 style={{ margin: "0 0 0.3rem", fontSize: "1.15rem" }}>{league.name}</h2>
+                  <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
+                    {league.season} · {league.scoringType} · {claimed}/{league.teams.length} on
+                    the app
+                    {membership && isCommissionerClaim(membership, league.teams)
+                      ? " · commissioner"
+                      : ""}
+                  </p>
+                  {myTeam ? (
+                    <p className="success" style={{ margin: "0.35rem 0 0" }}>
+                      {myTeam.claimedLabel || myTeam.teamName || myTeam.displayName}
                     </p>
-                    {myTeam ? (
-                      <p className="success" style={{ margin: "0.4rem 0 0" }}>
-                        Your team: {myTeam.claimedLabel || myTeam.teamName || myTeam.displayName}
-                      </p>
-                    ) : (
-                      <p className="muted" style={{ margin: "0.4rem 0 0" }}>
-                        Team not claimed yet
-                      </p>
-                    )}
-                  </div>
-                  <span className="pill">{league.sleeperLeagueId}</span>
+                  ) : (
+                    <p className="muted" style={{ margin: "0.35rem 0 0" }}>
+                      Tap to pick your team
+                    </p>
+                  )}
                 </div>
+                <span aria-hidden className="muted" style={{ fontSize: "1.4rem" }}>
+                  ›
+                </span>
               </Link>
             );
           })}
         </div>
       )}
+
+      <div style={{ marginTop: "1.5rem" }}>
+        <ClearSessionButton />
+      </div>
     </div>
   );
 }

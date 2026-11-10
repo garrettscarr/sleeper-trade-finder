@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { PlayerPhoto } from "@/components/PlayerPhoto";
-import { clampStars, formatStars, nudgeStars } from "@/lib/stars";
+import { clampStars, nudgeStars } from "@/lib/stars";
 
 export type ValueRow = {
   kind: "player" | "pick";
@@ -29,30 +29,69 @@ export type TeamFilter = {
   avatar?: string | null;
 };
 
-function StarBar({ value }: { value: number }) {
-  const v = clampStars(value);
-  return (
-    <span aria-label={formatStars(v)} title={formatStars(v)} style={{ letterSpacing: "0.05em" }}>
-      {Array.from({ length: 5 }, (_, i) => {
-        const threshold = i + 1;
-        if (v >= threshold) return <span key={i}>★</span>;
-        if (v >= threshold - 0.5) return <span key={i} style={{ opacity: 0.55 }}>⯨</span>;
-        return (
-          <span key={i} style={{ opacity: 0.25 }}>
-            ☆
-          </span>
-        );
-      })}
-    </span>
-  );
-}
+const POSITIONS = ["All", "QB", "RB", "WR", "TE", "PICK"] as const;
+const TIERS = ["love", "fair", "fade"] as const;
 
-function vsLeagueLabel(yours: number, league: number | null) {
-  if (league == null) return "no league ratings yet";
-  const d = clampStars(yours) - clampStars(league);
-  if (Math.abs(d) < 0.25) return "in line with league";
-  if (d > 0) return `+${d.toFixed(1)}★ vs league`;
-  return `${d.toFixed(1)}★ vs league`;
+const keyOf = (r: ValueRow) => `${r.kind}:${r.id}`;
+
+function AssetRow({
+  row,
+  onChange,
+}: {
+  row: ValueRow;
+  onChange: (row: ValueRow, patch: Partial<ValueRow>) => void;
+}) {
+  const meta = [
+    row.position && row.position !== "PICK" ? row.position : null,
+    row.league != null ? `Lg ${clampStars(row.league).toFixed(1)}` : null,
+    row.market != null ? `Mkt ${clampStars(row.market).toFixed(1)}` : null,
+  ].filter(Boolean);
+  return (
+    <div className="asset-row">
+      <PlayerPhoto
+        sleeperPlayerId={row.kind === "player" ? row.sleeperPlayerId : null}
+        sleeperAvatarId={row.kind === "pick" ? row.sleeperAvatarId : null}
+        name={row.label}
+        size={44}
+      />
+      <div className="asset-main">
+        <div className="asset-name">{row.label}</div>
+        <div className="asset-meta">{meta.join(" · ")}</div>
+        <div className="tier-chips">
+          {TIERS.map((t) => (
+            <button
+              key={t}
+              type="button"
+              className={`chip chip-${t} ${(row.tier || "fair") === t ? "on" : ""}`}
+              onClick={() => onChange(row, { tier: t })}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="stepper">
+        <button
+          type="button"
+          aria-label={`Lower ${row.label}`}
+          onClick={() => onChange(row, { value: nudgeStars(row.value, -1) })}
+        >
+          −
+        </button>
+        <div className="stepper-val">
+          {clampStars(row.value).toFixed(1)}
+          <small>★</small>
+        </div>
+        <button
+          type="button"
+          aria-label={`Raise ${row.label}`}
+          onClick={() => onChange(row, { value: nudgeStars(row.value, 1) })}
+        >
+          +
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export function ValuesEditor({
@@ -70,6 +109,8 @@ export function ValuesEditor({
 }) {
   const [tab, setTab] = useState<"roster" | "league">("roster");
   const [teamFilter, setTeamFilter] = useState<string>("all");
+  const [pos, setPos] = useState<(typeof POSITIONS)[number]>("All");
+  const [query, setQuery] = useState("");
   const [rows, setRows] = useState<ValueRow[]>(initialRoster);
   const [leagueRows, setLeagueRows] = useState<ValueRow[]>(initialLeagueAssets);
   const [pending, setPending] = useState<Record<string, ValueRow>>({});
@@ -78,28 +119,16 @@ export function ValuesEditor({
 
   const dirtyCount = Object.keys(pending).length;
 
-  function keyOf(r: ValueRow) {
-    return `${r.kind}:${r.id}`;
-  }
-
   function updateRow(row: ValueRow, patch: Partial<ValueRow>) {
     const next = { ...row, ...patch, value: clampStars(patch.value ?? row.value) };
     const key = keyOf(next);
     setPending((p) => ({ ...p, [key]: next }));
-    const onRosterList = rows.some((r) => keyOf(r) === key);
-    if (onRosterList) {
+    setStatus("");
+    if (rows.some((r) => keyOf(r) === key)) {
       setRows((list) => list.map((r) => (keyOf(r) === key ? next : r)));
     } else {
       setLeagueRows((list) => list.map((r) => (keyOf(r) === key ? next : r)));
     }
-  }
-
-  function applyPayload(data: {
-    roster?: ValueRow[];
-    leagueAssets?: ValueRow[];
-  }) {
-    if (data.roster) setRows(data.roster);
-    if (data.leagueAssets) setLeagueRows(data.leagueAssets);
   }
 
   async function save() {
@@ -123,207 +152,137 @@ export function ValuesEditor({
       return;
     }
     setPending({});
-    applyPayload(data);
-    setStatus(`Saved ${updates.length} ratings — league consensus updated`);
+    if (data.roster) setRows(data.roster);
+    if (data.leagueAssets) setLeagueRows(data.leagueAssets);
+    setStatus(`Saved ${updates.length} rating${updates.length === 1 ? "" : "s"}`);
   }
 
-  const progress = useMemo(() => {
-    const rated = rows.filter((r) => r.value > 0 || r.market != null).length;
-    return rows.length === 0 ? 0 : Math.round((rated / rows.length) * 100);
-  }, [rows]);
+  const matches = (r: ValueRow) => {
+    if (pos !== "All" && (r.position || "") !== pos) return false;
+    const q = query.trim().toLowerCase();
+    return !q || r.label.toLowerCase().includes(q);
+  };
 
-  const filteredLeague = useMemo(() => {
-    if (teamFilter === "all") return leagueRows;
-    return leagueRows.filter((r) => r.ownerTeamId === teamFilter);
-  }, [leagueRows, teamFilter]);
+  const visibleRoster = useMemo(() => rows.filter(matches), [rows, pos, query]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const groupedLeague = useMemo(() => {
+    const filtered = leagueRows.filter(
+      (r) => (teamFilter === "all" || r.ownerTeamId === teamFilter) && matches(r),
+    );
     const groups = new Map<string, { label: string; avatar: string | null; rows: ValueRow[] }>();
-    for (const row of filteredLeague) {
+    for (const row of filtered) {
       const id = row.ownerTeamId || "unknown";
-      const label = row.ownerTeamLabel || "Unknown team";
-      const existing = groups.get(id);
-      if (existing) existing.rows.push(row);
-      else groups.set(id, { label, avatar: row.ownerAvatar ?? null, rows: [row] });
+      const g = groups.get(id);
+      if (g) g.rows.push(row);
+      else
+        groups.set(id, {
+          label: row.ownerTeamLabel || "Unknown team",
+          avatar: row.ownerAvatar ?? null,
+          rows: [row],
+        });
     }
     return [...groups.entries()].sort((a, b) => a[1].label.localeCompare(b[1].label));
-  }, [filteredLeague]);
-
-  function renderAssetRow(row: ValueRow) {
-    return (
-      <tr key={keyOf(row)}>
-        <td>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.65rem" }}>
-            <PlayerPhoto
-              sleeperPlayerId={row.kind === "player" ? row.sleeperPlayerId : null}
-              sleeperAvatarId={row.kind === "pick" ? row.sleeperAvatarId : null}
-              name={row.label}
-              size={42}
-            />
-            <div>
-              <strong>{row.label}</strong>
-              {row.nflTeam ? <div className="muted">{row.nflTeam}</div> : null}
-            </div>
-          </div>
-        </td>
-        <td>{row.position || "—"}</td>
-        <td>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <div className="nudge">
-              <button
-                type="button"
-                onClick={() => updateRow(row, { value: nudgeStars(row.value, -1) })}
-              >
-                −
-              </button>
-              <button
-                type="button"
-                onClick={() => updateRow(row, { value: nudgeStars(row.value, 1) })}
-              >
-                +
-              </button>
-            </div>
-            <StarBar value={row.value} />
-            <strong>{formatStars(row.value)}</strong>
-          </div>
-        </td>
-        <td>
-          {row.league == null ? (
-            <span className="muted">—</span>
-          ) : (
-            <div>
-              <StarBar value={row.league} /> <strong>{formatStars(row.league)}</strong>
-              <div className="muted" style={{ fontSize: "0.75rem" }}>
-                {row.leagueRaters} rater{row.leagueRaters === 1 ? "" : "s"}
-              </div>
-            </div>
-          )}
-        </td>
-        <td>
-          {row.market == null ? (
-            <span className="muted">—</span>
-          ) : (
-            <>
-              <StarBar value={row.market} />{" "}
-              <span className="muted">{formatStars(row.market)}</span>
-            </>
-          )}
-        </td>
-        <td className="muted">{vsLeagueLabel(row.value, row.league)}</td>
-        <td>
-          <select
-            className="input"
-            style={{ width: 110 }}
-            value={row.tier || "fair"}
-            onChange={(e) => updateRow(row, { tier: e.target.value })}
-          >
-            <option value="love">love</option>
-            <option value="fair">fair</option>
-            <option value="fade">fade</option>
-          </select>
-        </td>
-      </tr>
-    );
-  }
-
-  const tableHead = (
-    <thead>
-      <tr>
-        <th>Asset</th>
-        <th>Pos</th>
-        <th>Your ★</th>
-        <th>League ★</th>
-        <th>Market ★</th>
-        <th>You vs league</th>
-        <th>Tier</th>
-      </tr>
-    </thead>
-  );
+  }, [leagueRows, teamFilter, pos, query]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="stack">
-      <div style={{ display: "flex", justifyContent: "space-between", gap: "1rem", flexWrap: "wrap" }}>
-        <p className="muted" style={{ margin: 0 }}>
-          Your ★ vs live <strong>League ★</strong> (median of {claimedManagers || "claimed"}{" "}
-          managers). Market ★ is the system baseline (ADP/projections). Roster coverage ~
-          {progress}%.
-        </p>
-        <button className="btn" disabled={!dirtyCount || saving} onClick={save}>
-          {saving ? "Saving…" : `Save${dirtyCount ? ` (${dirtyCount})` : ""}`}
-        </button>
-      </div>
-      {status ? <p className={status.includes("Saved") ? "success" : "error"}>{status}</p> : null}
+      <p className="muted" style={{ margin: 0, fontSize: "0.9rem" }}>
+        Tap − / + to rate. Lg is the median of {claimedManagers || "all"} managers&apos;
+        ratings; Mkt is the market baseline.
+      </p>
 
-      <div className="tabs">
+      <div className="seg">
         <button
           type="button"
-          className={`tab ${tab === "roster" ? "active" : ""}`}
+          className={tab === "roster" ? "on" : ""}
           onClick={() => setTab("roster")}
         >
           My roster
         </button>
         <button
           type="button"
-          className={`tab ${tab === "league" ? "active" : ""}`}
+          className={tab === "league" ? "on" : ""}
           onClick={() => setTab("league")}
         >
-          By team
+          Other teams
         </button>
       </div>
 
       {tab === "league" ? (
-        <div>
-          <label className="label" htmlFor="teamFilter">
-            Fantasy team
-          </label>
-          <select
-            className="input"
-            id="teamFilter"
-            value={teamFilter}
-            onChange={(e) => setTeamFilter(e.target.value)}
-            style={{ maxWidth: 360 }}
-          >
-            <option value="all">All other teams</option>
-            {teamFilters.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.label}
-              </option>
-            ))}
-          </select>
-        </div>
+        <select
+          className="input"
+          aria-label="Fantasy team"
+          value={teamFilter}
+          onChange={(e) => setTeamFilter(e.target.value)}
+        >
+          <option value="all">All other teams</option>
+          {teamFilters.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.label}
+            </option>
+          ))}
+        </select>
       ) : null}
 
+      <input
+        className="input"
+        type="search"
+        placeholder="Search players"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+      <div className="chip-scroll">
+        {POSITIONS.map((p) => (
+          <button
+            key={p}
+            type="button"
+            className={`chip ${pos === p ? "on" : ""}`}
+            onClick={() => setPos(p)}
+          >
+            {p === "PICK" ? "Picks" : p}
+          </button>
+        ))}
+      </div>
+
       {tab === "roster" ? (
-        <div className="panel" style={{ overflowX: "auto" }}>
-          <table className="table">
-            {tableHead}
-            <tbody>{rows.map(renderAssetRow)}</tbody>
-          </table>
+        <div className="asset-list">
+          {visibleRoster.length === 0 ? <p className="muted">Nothing matches.</p> : null}
+          {visibleRoster.map((r) => (
+            <AssetRow key={keyOf(r)} row={r} onChange={updateRow} />
+          ))}
         </div>
       ) : (
         <div className="stack">
-          {groupedLeague.length === 0 ? (
-            <p className="muted">No assets for that team.</p>
-          ) : null}
+          {groupedLeague.length === 0 ? <p className="muted">Nothing matches.</p> : null}
           {groupedLeague.map(([id, group]) => (
-            <div className="panel stack" key={id} style={{ overflowX: "auto" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.65rem" }}>
-                <PlayerPhoto
-                  sleeperAvatarId={group.avatar}
-                  name={group.label}
-                  size={36}
-                />
-                <h3 style={{ margin: 0 }}>{group.label}</h3>
-                <span className="muted">{group.rows.length} assets</span>
+            <div key={id} className="stack" style={{ gap: "0.5rem" }}>
+              <div className="group-head">
+                <PlayerPhoto sleeperAvatarId={group.avatar} name={group.label} size={28} />
+                <strong>{group.label}</strong>
+                <span className="muted">{group.rows.length}</span>
               </div>
-              <table className="table">
-                {tableHead}
-                <tbody>{group.rows.map(renderAssetRow)}</tbody>
-              </table>
+              <div className="asset-list">
+                {group.rows.map((r) => (
+                  <AssetRow key={keyOf(r)} row={r} onChange={updateRow} />
+                ))}
+              </div>
             </div>
           ))}
         </div>
       )}
+
+      {dirtyCount > 0 || status ? (
+        <div className="save-bar">
+          <span className={status && !dirtyCount ? (status.startsWith("Saved") ? "success" : "error") : "muted"}>
+            {dirtyCount > 0 ? `${dirtyCount} unsaved change${dirtyCount === 1 ? "" : "s"}` : status}
+          </span>
+          {dirtyCount > 0 ? (
+            <button className="btn" type="button" disabled={saving} onClick={save}>
+              {saving ? "Saving…" : "Save"}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

@@ -109,8 +109,8 @@ export function ClaimTeamForm({
       {askUsernameFor ? (
         <form className="panel stack" onSubmit={submitUsername}>
           <p style={{ margin: 0 }}>
-            <strong>{askUsernameFor.label}</strong> is signed in on another device. Enter your
-            Sleeper username to move it here.
+            <strong>{askUsernameFor.label}</strong> is already signed in on another device. Enter
+            your Sleeper username to sign in here too.
           </p>
           <input
             className="input"

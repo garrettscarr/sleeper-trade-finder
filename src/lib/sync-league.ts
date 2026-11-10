@@ -124,39 +124,30 @@ async function upsertPlayerDirectory(rosteredIds: Set<string>) {
   }
 }
 
-export async function seedPersonalValuesForTeam(
-  leagueId: string,
-  teamId: string,
-  opts: { overwrite?: boolean } = {},
-) {
-  const overwrite = opts.overwrite ?? false;
-  const baselines = await prisma.baselineValue.findMany({ where: { leagueId } });
-  for (const b of baselines) {
-    await prisma.personalValue.upsert({
-      where: { teamId_playerId: { teamId, playerId: b.playerId } },
-      create: {
-        leagueId,
-        teamId,
-        playerId: b.playerId,
-        value: b.value,
-        tier: "fair",
-      },
-      update: overwrite ? { value: b.value, tier: "fair" } : {},
-    });
-  }
-
-  const pickBaselines = await prisma.baselinePickValue.findMany({ where: { leagueId } });
-  for (const b of pickBaselines) {
-    await prisma.personalPickValue.upsert({
-      where: { teamId_pickId: { teamId, pickId: b.pickId } },
-      create: {
-        leagueId,
-        teamId,
-        pickId: b.pickId,
-        value: b.value,
-        tier: "fair",
-      },
-      update: overwrite ? { value: b.value, tier: "fair" } : {},
-    });
-  }
+/** Give a team a starting rating (market ★) for anything it hasn't rated; never overwrites. */
+export async function seedPersonalValuesForTeam(leagueId: string, teamId: string) {
+  const [baselines, pickBaselines] = await Promise.all([
+    prisma.baselineValue.findMany({ where: { leagueId } }),
+    prisma.baselinePickValue.findMany({ where: { leagueId } }),
+  ]);
+  await prisma.personalValue.createMany({
+    data: baselines.map((b) => ({
+      leagueId,
+      teamId,
+      playerId: b.playerId,
+      value: b.value,
+      tier: "fair",
+    })),
+    skipDuplicates: true,
+  });
+  await prisma.personalPickValue.createMany({
+    data: pickBaselines.map((b) => ({
+      leagueId,
+      teamId,
+      pickId: b.pickId,
+      value: b.value,
+      tier: "fair",
+    })),
+    skipDuplicates: true,
+  });
 }
