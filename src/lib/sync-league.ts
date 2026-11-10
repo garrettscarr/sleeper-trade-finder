@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { applyPickOwnership, applyRosters } from "./roster-refresh";
 import { randomAccessCode } from "./session";
 import {
   defaultPickValue,
@@ -25,7 +26,6 @@ export async function syncLeagueFromSleeper(opts: {
     fetchTradedPicks(sleeperLeagueId).catch(() => []),
   ]);
 
-  const usersById = new Map(users.map((u) => [u.user_id, u]));
   const scoringType = detectScoringType(leagueData);
 
   const allPlayerIds = new Set<string>();
@@ -101,99 +101,12 @@ export async function syncLeagueFromSleeper(opts: {
         },
       });
 
-  for (const roster of rosters) {
-    const user = roster.owner_id ? usersById.get(roster.owner_id) : undefined;
-    const displayName = user?.display_name ?? `Roster ${roster.roster_id}`;
-    const teamName = user?.metadata?.team_name ?? null;
-
-    await prisma.team.upsert({
-      where: {
-        leagueId_sleeperRosterId: {
-          leagueId: league.id,
-          sleeperRosterId: roster.roster_id,
-        },
-      },
-      create: {
-        leagueId: league.id,
-        sleeperRosterId: roster.roster_id,
-        sleeperOwnerId: roster.owner_id,
-        displayName,
-        teamName,
-        avatar: user?.avatar ?? null,
-        playerIds: JSON.stringify(roster.players ?? []),
-        isCommissioner: Boolean(user?.is_owner),
-      },
-      update: {
-        sleeperOwnerId: roster.owner_id,
-        displayName,
-        teamName,
-        avatar: user?.avatar ?? null,
-        playerIds: JSON.stringify(roster.players ?? []),
-        isCommissioner: Boolean(user?.is_owner),
-      },
-    });
-  }
-
-  const teams = await prisma.team.findMany({ where: { leagueId: league.id } });
-  const teamByRoster = new Map(teams.map((t) => [t.sleeperRosterId, t]));
-  const seasonNum = Number(leagueData.season) || new Date().getFullYear();
-  const seasons = [String(seasonNum + 1), String(seasonNum + 2), String(seasonNum + 3)];
-
-  type PickKey = string;
-  const ownership = new Map<
-    PickKey,
-    { season: string; round: number; original: number; current: number }
-  >();
-  for (const season of seasons) {
-    for (let round = 1; round <= 4; round++) {
-      for (const t of teams) {
-        const key = `${season}-${round}-${t.sleeperRosterId}`;
-        ownership.set(key, {
-          season,
-          round,
-          original: t.sleeperRosterId,
-          current: t.sleeperRosterId,
-        });
-      }
-    }
-  }
-
-  for (const tp of tradedPicks) {
-    if (!seasons.includes(String(tp.season))) continue;
-    if (tp.round < 1 || tp.round > 4) continue;
-    const key = `${tp.season}-${tp.round}-${tp.roster_id}`;
-    const existing = ownership.get(key);
-    if (existing) {
-      existing.current = tp.owner_id;
-    }
-  }
-
-  for (const pick of ownership.values()) {
-    const originalTeam = teamByRoster.get(pick.original);
-    const label = `${pick.season} Round ${pick.round} (${originalTeam?.teamName || originalTeam?.displayName || `R${pick.original}`})`;
-    await prisma.draftPick.upsert({
-      where: {
-        leagueId_season_round_originalRosterId: {
-          leagueId: league.id,
-          season: pick.season,
-          round: pick.round,
-          originalRosterId: pick.original,
-        },
-      },
-      create: {
-        leagueId: league.id,
-        season: pick.season,
-        round: pick.round,
-        rosterId: pick.current,
-        originalRosterId: pick.original,
-        label,
-      },
-      update: {
-        rosterId: pick.current,
-        label,
-      },
-    });
-  }
+  await applyRosters(league.id, rosters, users);
+  await applyPickOwnership(
+    league.id,
+    Number(leagueData.season) || new Date().getFullYear(),
+    tradedPicks,
+  );
 
   const picks = await prisma.draftPick.findMany({ where: { leagueId: league.id } });
   for (const pick of picks) {

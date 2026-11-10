@@ -1,5 +1,6 @@
 import { ensureCommissionerFlags } from "./commissioner";
 import { prisma } from "./prisma";
+import { ensureFreshRosters } from "./roster-refresh";
 import {
   getMembership,
   getSession,
@@ -34,6 +35,7 @@ export async function requireLeagueAccess(leagueId: string) {
   if (!raw) {
     return { session, membership: null, error: "Enter this league's invite or admin code" as const };
   }
+  await ensureFreshRosters(leagueId);
   const membership = await resolveMembership(leagueId, raw);
   return { session, membership, error: null };
 }
