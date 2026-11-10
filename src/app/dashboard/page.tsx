@@ -2,6 +2,21 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getMembership, getSession } from "@/lib/session";
 
+function isCommissionerClaim(
+  membership: { role: string; teamId?: string; claimToken?: string } | undefined,
+  teams: { id: string; claimToken: string | null; isCommissioner: boolean }[],
+) {
+  if (!membership) return false;
+  if (membership.role === "admin") return true;
+  return teams.some(
+    (t) =>
+      t.isCommissioner &&
+      t.id === membership.teamId &&
+      Boolean(membership.claimToken) &&
+      t.claimToken === membership.claimToken,
+  );
+}
+
 export default async function DashboardPage() {
   const session = await getSession();
   const ids = session.memberships.map((m) => m.leagueId);
@@ -21,7 +36,7 @@ export default async function DashboardPage() {
         <div>
           <h1 style={{ margin: "0 0 0.35rem", letterSpacing: "-0.03em" }}>My leagues</h1>
           <p className="muted" style={{ margin: 0 }}>
-            Leagues unlocked on this browser via invite or admin code.
+            Leagues this device is signed in to.
           </p>
         </div>
         <Link href="/" className="btn">
@@ -55,7 +70,11 @@ export default async function DashboardPage() {
                     <p className="muted" style={{ margin: 0 }}>
                       Season {league.season} · {league.scoringType} · {claimed}/
                       {league.teams.length} teams claimed
-                      {membership ? ` · you are ${membership.role}` : ""}
+                      {membership
+                        ? isCommissionerClaim(membership, league.teams)
+                          ? " · commissioner"
+                          : " · manager"
+                        : ""}
                     </p>
                     {myTeam ? (
                       <p className="success" style={{ margin: "0.4rem 0 0" }}>

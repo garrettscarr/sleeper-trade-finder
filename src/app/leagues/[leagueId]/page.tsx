@@ -2,15 +2,16 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ClaimTeamForm } from "@/components/ClaimTeamForm";
 import { CopyAdminLink, CopyInviteLink } from "@/components/CopyInviteLink";
+import { SignInAnotherDevice } from "@/components/SignInAnotherDevice";
+import { requireLeagueAccess } from "@/lib/access";
 import { prisma } from "@/lib/prisma";
-import { getMembership, getSession } from "@/lib/session";
 
 type Props = { params: Promise<{ leagueId: string }> };
 
 export default async function LeagueHomePage({ params }: Props) {
   const { leagueId } = await params;
-  const session = await getSession();
-  const membership = getMembership(session, leagueId);
+  const access = await requireLeagueAccess(leagueId);
+  const membership = access.membership;
   if (!membership) redirect(`/join`);
 
   const league = await prisma.league.findUnique({
@@ -90,7 +91,7 @@ export default async function LeagueHomePage({ params }: Props) {
               : "not computed yet — admin can recompute"}
           </p>
           <p className="muted" style={{ margin: 0 }}>
-            Your role: {membership.role}
+            {isAdmin ? "Commissioner" : "Manager"}
             {myTeam
               ? ` · team ${myTeam.claimedLabel || myTeam.teamName || myTeam.displayName}`
               : " · team not claimed"}
@@ -125,30 +126,45 @@ export default async function LeagueHomePage({ params }: Props) {
               <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
                 Invite code: <strong>{league.inviteCode}</strong>
               </p>
-              <div style={{ marginTop: "0.75rem" }}>
-                <p className="muted" style={{ margin: "0 0 0.35rem", fontSize: "0.85rem" }}>
-                  Test on your phone as commissioner (private):
-                </p>
-                <CopyAdminLink adminCode={league.adminCode} />
-              </div>
+              <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
+                Everyone uses this same link. Whoever holds the commissioner&apos;s Sleeper team
+                gets admin automatically.
+              </p>
+              <details>
+                <summary className="muted" style={{ cursor: "pointer", fontSize: "0.85rem" }}>
+                  Backup admin code (private)
+                </summary>
+                <div style={{ marginTop: "0.5rem" }}>
+                  <CopyAdminLink adminCode={league.adminCode} />
+                </div>
+              </details>
             </>
           ) : (
             <p className="muted" style={{ margin: 0 }}>
-              Ask your commissioner for the invite code if a league mate still needs access.
+              Ask your commissioner for the invite link if a league mate still needs access.
             </p>
           )}
         </div>
       </div>
 
+      {myTeam ? (
+        <div className="panel stack">
+          <h2 style={{ margin: 0 }}>Your other devices</h2>
+          <SignInAnotherDevice />
+        </div>
+      ) : null}
+
       {!myTeam ? (
         <div className="panel">
-          <h2 style={{ marginTop: 0 }}>Claim your team</h2>
+          <h2 style={{ marginTop: 0 }}>Which team is yours?</h2>
           <ClaimTeamForm
             leagueId={league.id}
             teams={league.teams.map((t) => ({
               id: t.id,
               label: t.teamName ? `${t.teamName} (${t.displayName})` : t.displayName,
+              avatar: t.avatar,
               claimed: Boolean(t.claimToken) && t.id !== membership.teamId,
+              isCommissioner: t.isCommissioner,
             }))}
           />
         </div>

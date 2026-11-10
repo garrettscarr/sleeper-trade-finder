@@ -37,6 +37,7 @@ model Team {
   playerIds       String  @default("[]") // JSON array of sleeper player IDs
   claimedLabel    String?
   claimToken      String? @unique // proves team ownership in browser cookie
+  isCommissioner  Boolean @default(false) // Sleeper league owner; claiming this team grants admin
   league          League  @relation(fields: [leagueId], references: [id], onDelete: Cascade)
 
   @@unique([leagueId, sleeperRosterId])

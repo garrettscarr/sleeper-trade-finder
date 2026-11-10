@@ -34,7 +34,9 @@ export async function POST(req: Request) {
   for (const m of proof.memberships) {
     let next = { ...m };
     if (username && (!next.teamId || !next.claimToken)) {
-      const claim = await restoreClaimForSleeperUsername(m.leagueId, username);
+      const claim = await restoreClaimForSleeperUsername(m.leagueId, username, {
+        allowClaimedCommissioner: m.role === "admin",
+      });
       if (claim) {
         next = {
           ...next,

@@ -2,9 +2,20 @@
 
 import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
-import { setDeviceProof, setSavedUsername } from "@/lib/device-storage";
+import { PlayerPhoto } from "@/components/PlayerPhoto";
+import {
+  getSavedUsername,
+  setDeviceProof,
+  setSavedUsername,
+} from "@/lib/device-storage";
 
-type TeamOption = { id: string; label: string; claimed: boolean };
+type TeamOption = {
+  id: string;
+  label: string;
+  avatar?: string | null;
+  claimed: boolean;
+  isCommissioner: boolean;
+};
 
 export function ClaimTeamForm({
   leagueId,
@@ -15,127 +26,113 @@ export function ClaimTeamForm({
 }) {
   const router = useRouter();
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loadingId, setLoadingId] = useState("");
+  const [askUsernameFor, setAskUsernameFor] = useState<TeamOption | null>(null);
 
-  async function reconnect(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setLoading(true);
+  async function claim(team: TeamOption, sleeperUsername?: string) {
+    setLoadingId(team.id);
     setError("");
-    const form = new FormData(e.currentTarget);
-    const res = await fetch(`/api/leagues/${leagueId}/claim`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sleeperUsername: String(form.get("sleeperUsername") || "").trim(),
-      }),
-    });
-    const data = await res.json();
-    setLoading(false);
-    if (!res.ok) {
-      setError(data.error || "Could not reconnect");
-      return;
-    }
-    if (data.deviceProof) setDeviceProof(data.deviceProof);
-    const name = String(form.get("sleeperUsername") || "").trim();
-    if (name) setSavedUsername(name);
-    router.refresh();
-    router.push(`/leagues/${leagueId}/values`);
-  }
-
-  async function onSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-    const form = new FormData(e.currentTarget);
     const res = await fetch(`/api/leagues/${leagueId}/claim`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        teamId: String(form.get("teamId")),
-        label: String(form.get("label") || ""),
-        sleeperUsername: String(form.get("claimUsername") || "").trim() || undefined,
-      }),
+      body: JSON.stringify({ teamId: team.id, sleeperUsername }),
     });
     const data = await res.json();
-    setLoading(false);
+    setLoadingId("");
     if (!res.ok) {
-      setError(data.error || "Claim failed");
+      if (data.needsUsername) {
+        setAskUsernameFor(team);
+      } else {
+        setError(data.error || "Claim failed");
+      }
       return;
     }
     if (data.deviceProof) setDeviceProof(data.deviceProof);
-    const name = String(form.get("claimUsername") || "").trim();
-    if (name) setSavedUsername(name);
+    if (sleeperUsername) setSavedUsername(sleeperUsername);
     router.refresh();
-    router.push(`/leagues/${leagueId}/values`);
+    router.push(`/leagues/${leagueId}/lab`);
   }
 
-  const anyClaimed = teams.some((t) => t.claimed);
+  function onTap(team: TeamOption) {
+    setError("");
+    if (!team.claimed) {
+      void claim(team);
+      return;
+    }
+    if (team.isCommissioner) {
+      setAskUsernameFor(null);
+      setError(
+        "That's the commissioner's team and it's already signed in elsewhere. Use “Sign in on another device” from that phone, or the admin code.",
+      );
+      return;
+    }
+    const saved = getSavedUsername();
+    if (saved) {
+      void claim(team, saved);
+      return;
+    }
+    setAskUsernameFor(team);
+  }
+
+  function submitUsername(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!askUsernameFor) return;
+    const form = new FormData(e.currentTarget);
+    const name = String(form.get("sleeperUsername") || "").trim();
+    if (name) void claim(askUsernameFor, name);
+  }
 
   return (
     <div className="stack">
-      {anyClaimed ? (
-        <form className="stack" onSubmit={reconnect}>
-          <p className="muted" style={{ margin: 0 }}>
-            Already claimed your team on another device? Reconnect with your Sleeper
-            username.
+      <p className="muted" style={{ margin: 0 }}>
+        Tap your team. That&apos;s it. This device remembers you.
+      </p>
+      <div className="team-grid">
+        {teams.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            className="team-tile"
+            disabled={Boolean(loadingId)}
+            onClick={() => onTap(t)}
+          >
+            <PlayerPhoto sleeperAvatarId={t.avatar} name={t.label} size={40} />
+            <span style={{ textAlign: "left" }}>
+              <strong style={{ display: "block" }}>{t.label}</strong>
+              <span className="muted" style={{ fontSize: "0.8rem" }}>
+                {loadingId === t.id
+                  ? "Signing in…"
+                  : t.claimed
+                    ? "Claimed: tap if this is you"
+                    : t.isCommissioner
+                      ? "Commissioner"
+                      : "Open"}
+              </span>
+            </span>
+          </button>
+        ))}
+      </div>
+
+      {askUsernameFor ? (
+        <form className="panel stack" onSubmit={submitUsername}>
+          <p style={{ margin: 0 }}>
+            <strong>{askUsernameFor.label}</strong> is signed in on another device. Enter your
+            Sleeper username to move it here.
           </p>
-          <div>
-            <label className="label" htmlFor="sleeperUsername">
-              Sleeper username
-            </label>
-            <input
-              className="input"
-              id="sleeperUsername"
-              name="sleeperUsername"
-              placeholder="your_sleeper_name"
-              required
-            />
-          </div>
-          <button className="btn" type="submit" disabled={loading}>
-            {loading ? "Reconnecting…" : "Reconnect my team"}
+          <input
+            className="input"
+            name="sleeperUsername"
+            placeholder="your_sleeper_name"
+            autoFocus
+            required
+          />
+          <button className="btn" type="submit" disabled={Boolean(loadingId)}>
+            Reconnect
           </button>
         </form>
       ) : null}
 
-      <form className="stack" onSubmit={onSubmit}>
-        <div>
-          <label className="label" htmlFor="teamId">
-            Your Sleeper team
-          </label>
-          <select className="input" id="teamId" name="teamId" required defaultValue="">
-            <option value="" disabled>
-              Select your team
-            </option>
-            {teams.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.label}
-                {t.claimed ? " (claimed — use username to reconnect)" : ""}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="label" htmlFor="claimUsername">
-            Sleeper username (required if team shows claimed)
-          </label>
-          <input
-            className="input"
-            id="claimUsername"
-            name="claimUsername"
-            placeholder="your_sleeper_name"
-          />
-        </div>
-        <div>
-          <label className="label" htmlFor="label">
-            Nickname (optional)
-          </label>
-          <input className="input" id="label" name="label" placeholder="How you want to appear" />
-        </div>
-        {error ? <p className="error">{error}</p> : null}
-        <button className="btn" type="submit" disabled={loading}>
-          {loading ? "Claiming…" : "Claim team"}
-        </button>
-      </form>
+      {error ? <p className="error">{error}</p> : null}
     </div>
   );
 }

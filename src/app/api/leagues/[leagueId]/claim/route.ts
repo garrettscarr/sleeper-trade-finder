@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireLeagueAccess } from "@/lib/access";
 import { jsonWithMembership } from "@/lib/auth-response";
 import { restoreClaimForSleeperUsername } from "@/lib/claim-restore";
+import { ensureCommissionerFlags } from "@/lib/commissioner";
 import { prisma } from "@/lib/prisma";
 import { randomCode } from "@/lib/session";
 import { fetchUserByUsername } from "@/lib/sleeper";
@@ -16,6 +17,9 @@ const schema = z.object({
   sleeperUsername: z.string().min(1).max(40).optional(),
 });
 
+const COMMISSIONER_TEAM_LOCKED =
+  "That's the commissioner's team and it's already signed in elsewhere. Use “Sign in on another device” from that phone, or the admin code.";
+
 export async function POST(req: Request, { params }: Params) {
   const { leagueId } = await params;
   const access = await requireLeagueAccess(leagueId);
@@ -28,6 +32,7 @@ export async function POST(req: Request, { params }: Params) {
     return NextResponse.json({ error: "Invalid request" }, { status: 400 });
   }
 
+  await ensureCommissionerFlags(leagueId);
   const team = await prisma.team.findFirst({
     where: { id: parsed.data.teamId, leagueId },
   });
@@ -36,6 +41,7 @@ export async function POST(req: Request, { params }: Params) {
   }
 
   const membership = access.membership!;
+  const role = team.isCommissioner ? "admin" : membership.role;
   const ownsThis =
     membership.teamId === team.id &&
     membership.claimToken &&
@@ -44,6 +50,9 @@ export async function POST(req: Request, { params }: Params) {
   // True Sleeper roster owner can reattach even if this browser lost its claim cookie.
   let ownerOverride = false;
   if (team.claimToken && !ownsThis && parsed.data.sleeperUsername) {
+    if (team.isCommissioner && membership.role !== "admin") {
+      return NextResponse.json({ error: COMMISSIONER_TEAM_LOCKED }, { status: 409 });
+    }
     const user = await fetchUserByUsername(parsed.data.sleeperUsername);
     if (user?.user_id && team.sleeperOwnerId === user.user_id) {
       ownerOverride = true;
@@ -53,8 +62,10 @@ export async function POST(req: Request, { params }: Params) {
   if (team.claimToken && !ownsThis && !ownerOverride) {
     return NextResponse.json(
       {
-        error:
-          "Team already claimed. If it's yours, enter your Sleeper username to reconnect.",
+        error: team.isCommissioner
+          ? COMMISSIONER_TEAM_LOCKED
+          : "Team already claimed. If it's yours, enter your Sleeper username to reconnect.",
+        needsUsername: !team.isCommissioner,
       },
       { status: 409 },
     );
@@ -64,12 +75,7 @@ export async function POST(req: Request, { params }: Params) {
     await seedPersonalValuesForTeam(leagueId, team.id);
     return jsonWithMembership(
       { team },
-      {
-        leagueId,
-        role: membership.role,
-        teamId: team.id,
-        claimToken: team.claimToken,
-      },
+      { leagueId, role, teamId: team.id, claimToken: team.claimToken },
       { sleeperUsername: parsed.data.sleeperUsername },
     );
   }
@@ -91,20 +97,15 @@ export async function POST(req: Request, { params }: Params) {
     where: { id: team.id },
     data: {
       claimToken,
-      claimedLabel: parsed.data.label?.trim() || team.displayName,
+      claimedLabel: parsed.data.label?.trim() || team.claimedLabel || team.displayName,
     },
   });
 
   await seedPersonalValuesForTeam(leagueId, team.id);
 
   return jsonWithMembership(
-    { team: updated },
-    {
-      leagueId,
-      role: membership.role,
-      teamId: updated.id,
-      claimToken,
-    },
+    { team: updated, isCommissioner: team.isCommissioner },
+    { leagueId, role, teamId: updated.id, claimToken },
     { sleeperUsername: parsed.data.sleeperUsername },
   );
 }
@@ -124,22 +125,24 @@ export async function PUT(req: Request, { params }: Params) {
     return NextResponse.json({ error: "Enter your Sleeper username" }, { status: 400 });
   }
 
-  const claim = await restoreClaimForSleeperUsername(leagueId, body.data.sleeperUsername);
+  const membership = access.membership!;
+  const claim = await restoreClaimForSleeperUsername(leagueId, body.data.sleeperUsername, {
+    allowClaimedCommissioner: membership.role === "admin",
+  });
   if (!claim) {
     return NextResponse.json(
-      { error: "No team in this league matches that Sleeper username" },
+      {
+        error: `No open team matches that Sleeper username. ${COMMISSIONER_TEAM_LOCKED.replace("That's", "If it's")}`,
+      },
       { status: 404 },
     );
   }
 
   return jsonWithMembership(
-    {
-      teamId: claim.teamId,
-      displayName: claim.displayName,
-    },
+    { teamId: claim.teamId, displayName: claim.displayName },
     {
       leagueId,
-      role: access.membership!.role,
+      role: claim.isCommissioner ? "admin" : membership.role,
       teamId: claim.teamId,
       claimToken: claim.claimToken,
     },

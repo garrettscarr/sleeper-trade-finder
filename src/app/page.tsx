@@ -12,12 +12,13 @@ export default async function HomePage() {
       <div className="hero" style={{ paddingBottom: "1rem" }}>
         <div>
           <p className="pill fair" style={{ marginBottom: "1rem" }}>
-            No accounts · Device remembers you · Codes only when needed
+            No accounts · No passwords · Tap your team
           </p>
           <h1>Trade Finder for Sleeper leagues</h1>
           <p>
-            Unlock once with an invite link or code. This browser keeps you signed in — no
-            email or password. New phone? Paste the code once again.
+            Open your league&apos;s invite link and tap your team. This device remembers you.
+            The commissioner gets admin automatically by tapping their own team. New phone? Use
+            “Sign in on another device” from the one you already use.
           </p>
           {session.memberships.length > 0 ? (
             <div style={{ marginTop: "1.25rem" }}>
@@ -32,16 +33,16 @@ export default async function HomePage() {
       <ContinueOnDevice />
 
       <div className="panel stack">
-        <h2 style={{ margin: 0 }}>Have a code? (first time on this phone)</h2>
+        <h2 style={{ margin: 0 }}>No invite link handy? Paste the code</h2>
         <EnterCodeForm />
       </div>
 
       <div className="panel">
         <h2 style={{ marginTop: 0 }}>Commissioner — set up a league</h2>
         <p className="muted">
-          Import from Sleeper, then share the <strong>invite link</strong> with managers.
-          Keep the <strong>admin code</strong> private. This device will remember your
-          admin access after setup.
+          Import from Sleeper with your username, then text the <strong>invite link</strong> to
+          your league. You&apos;re attached to your own team and admin right away. The admin
+          code is only a backup.
         </p>
         <DiscoverLeague />
       </div>

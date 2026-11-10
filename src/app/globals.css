@@ -271,6 +271,34 @@ textarea {
   background: rgba(62, 207, 142, 0.12);
 }
 
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.6rem;
+}
+
+.team-tile {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 56px;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: var(--bg1);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.team-tile:hover:not(:disabled) {
+  border-color: var(--accent-dim);
+}
+
+.team-tile:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .proposal {
   border: 1px solid var(--line);
   border-radius: 0.85rem;

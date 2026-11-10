@@ -69,7 +69,9 @@ export async function POST(req: Request) {
       const prior = proof?.memberships.find((m) => m.leagueId === existing.id);
       if (prior) {
         const claim = sleeperUsername
-          ? await restoreClaimForSleeperUsername(existing.id, sleeperUsername)
+          ? await restoreClaimForSleeperUsername(existing.id, sleeperUsername, {
+              allowClaimedCommissioner: prior.role === "admin",
+            })
           : null;
         return jsonWithMembership(
           {
@@ -102,7 +104,9 @@ export async function POST(req: Request) {
       const asAdmin = await findLeagueByAdminCode(accessCode);
       if (asAdmin && asAdmin.id === existing.id) {
         const claim = sleeperUsername
-          ? await restoreClaimForSleeperUsername(existing.id, sleeperUsername)
+          ? await restoreClaimForSleeperUsername(existing.id, sleeperUsername, {
+              allowClaimedCommissioner: true,
+            })
           : null;
         return jsonWithMembership(
           {
@@ -150,7 +154,7 @@ export async function POST(req: Request) {
           },
           {
             leagueId: existing.id,
-            role: "member",
+            role: claim?.isCommissioner ? "admin" : "member",
             teamId: claim?.teamId,
             claimToken: claim?.claimToken,
           },
@@ -174,7 +178,7 @@ export async function POST(req: Request) {
       recovered: false,
       needsCode: true,
       message:
-        "League already set up. On a phone that used it before, tap Continue on this device. Otherwise enter the invite or admin code once — then this browser remembers you.",
+        "League already set up. Open the invite link from your league chat, or use “Sign in on another device” from a phone that's already signed in.",
     });
   }
 
@@ -186,6 +190,12 @@ export async function POST(req: Request) {
     } catch {
       // League still usable; admin can retry baseline compute
     }
+    // Brand-new league: the importer's own team can be attached straight away.
+    const claim = sleeperUsername
+      ? await restoreClaimForSleeperUsername(league.id, sleeperUsername, {
+          allowClaimedCommissioner: true,
+        }).catch(() => null)
+      : null;
     return jsonWithMembership(
       {
         league: {
@@ -200,7 +210,12 @@ export async function POST(req: Request) {
         alreadyExists: false,
         recovered: false,
       },
-      { leagueId: league.id, role: "admin" },
+      {
+        leagueId: league.id,
+        role: "admin",
+        teamId: claim?.teamId,
+        claimToken: claim?.claimToken,
+      },
       { sleeperUsername },
     );
   } catch (e) {

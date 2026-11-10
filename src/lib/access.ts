@@ -1,12 +1,40 @@
+import { ensureCommissionerFlags } from "./commissioner";
 import { prisma } from "./prisma";
-import { getMembership, getSession, type AppSession } from "./session";
+import {
+  getMembership,
+  getSession,
+  type AppSession,
+  type LeagueMembership,
+} from "./session";
+
+/** A verified claim on the Sleeper commissioner's team counts as admin — no admin code needed. */
+export async function resolveMembership(
+  leagueId: string,
+  membership: LeagueMembership,
+): Promise<LeagueMembership> {
+  if (membership.role === "admin" || !membership.teamId || !membership.claimToken) {
+    return membership;
+  }
+  await ensureCommissionerFlags(leagueId);
+  const team = await prisma.team.findFirst({
+    where: {
+      id: membership.teamId,
+      leagueId,
+      claimToken: membership.claimToken,
+      isCommissioner: true,
+    },
+    select: { id: true },
+  });
+  return team ? { ...membership, role: "admin" } : membership;
+}
 
 export async function requireLeagueAccess(leagueId: string) {
   const session = await getSession();
-  const membership = getMembership(session, leagueId);
-  if (!membership) {
+  const raw = getMembership(session, leagueId);
+  if (!raw) {
     return { session, membership: null, error: "Enter this league's invite or admin code" as const };
   }
+  const membership = await resolveMembership(leagueId, raw);
   return { session, membership, error: null };
 }
 
@@ -14,7 +42,7 @@ export async function requireAdmin(leagueId: string) {
   const access = await requireLeagueAccess(leagueId);
   if (access.error) return access;
   if (access.membership?.role !== "admin") {
-    return { ...access, error: "Commissioner admin code required" as const };
+    return { ...access, error: "Commissioner access required" as const };
   }
   return { ...access, error: null };
 }

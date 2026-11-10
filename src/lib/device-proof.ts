@@ -29,12 +29,39 @@ export async function createDeviceProof(
     .sign(secretKey());
 }
 
-export async function verifyDeviceProof(
+const LINK_TYP = "stf_device_link_v1";
+
+/** Short-lived link that copies this device's sign-in to another phone/computer. */
+export async function createDeviceLinkToken(
+  session: AppSession,
+  opts?: { sleeperUsername?: string },
+): Promise<string> {
+  return new SignJWT({
+    typ: LINK_TYP,
+    memberships: session.memberships,
+    sleeperUsername: opts?.sleeperUsername,
+  })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("15m")
+    .sign(secretKey());
+}
+
+export async function verifyDeviceLinkToken(token: string) {
+  return verifyTyped(token, LINK_TYP);
+}
+
+export async function verifyDeviceProof(token: string) {
+  return verifyTyped(token, PROOF_TYP);
+}
+
+async function verifyTyped(
   token: string,
+  typ: string,
 ): Promise<DeviceProofPayload | null> {
   try {
     const { payload } = await jwtVerify(token, secretKey());
-    if (payload.typ !== PROOF_TYP) return null;
+    if (payload.typ !== typ) return null;
     const memberships = (payload.memberships as LeagueMembership[]) || [];
     if (!Array.isArray(memberships) || memberships.length === 0) return null;
     return {

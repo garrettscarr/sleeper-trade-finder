@@ -121,6 +121,7 @@ export async function syncLeagueFromSleeper(opts: {
         teamName,
         avatar: user?.avatar ?? null,
         playerIds: JSON.stringify(roster.players ?? []),
+        isCommissioner: Boolean(user?.is_owner),
       },
       update: {
         sleeperOwnerId: roster.owner_id,
@@ -128,6 +129,7 @@ export async function syncLeagueFromSleeper(opts: {
         teamName,
         avatar: user?.avatar ?? null,
         playerIds: JSON.stringify(roster.players ?? []),
+        isCommissioner: Boolean(user?.is_owner),
       },
     });
   }
