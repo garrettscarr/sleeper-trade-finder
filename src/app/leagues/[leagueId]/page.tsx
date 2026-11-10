@@ -117,33 +117,21 @@ export default async function LeagueHomePage({ params }: Props) {
 
         <div className="panel stack">
           <h2 style={{ margin: 0 }}>Invite managers</h2>
+          <p className="muted" style={{ margin: 0 }}>
+            League mates can just enter their Sleeper username on the home page. Or text them
+            this link:
+          </p>
+          <CopyInviteLink inviteCode={league.inviteCode} />
           {isAdmin ? (
-            <>
-              <p className="muted" style={{ margin: 0 }}>
-                Copy the full link and text it to your league (not the admin code):
-              </p>
-              <CopyInviteLink inviteCode={league.inviteCode} />
-              <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
-                Invite code: <strong>{league.inviteCode}</strong>
-              </p>
-              <p className="muted" style={{ margin: 0, fontSize: "0.85rem" }}>
-                Everyone uses this same link. Whoever holds the commissioner&apos;s Sleeper team
-                gets admin automatically.
-              </p>
-              <details>
-                <summary className="muted" style={{ cursor: "pointer", fontSize: "0.85rem" }}>
-                  Backup admin code (private)
-                </summary>
-                <div style={{ marginTop: "0.5rem" }}>
-                  <CopyAdminLink adminCode={league.adminCode} />
-                </div>
-              </details>
-            </>
-          ) : (
-            <p className="muted" style={{ margin: 0 }}>
-              Ask your commissioner for the invite link if a league mate still needs access.
-            </p>
-          )}
+            <details>
+              <summary className="muted" style={{ cursor: "pointer", fontSize: "0.85rem" }}>
+                Backup admin code (private)
+              </summary>
+              <div style={{ marginTop: "0.5rem" }}>
+                <CopyAdminLink adminCode={league.adminCode} />
+              </div>
+            </details>
+          ) : null}
         </div>
       </div>
 

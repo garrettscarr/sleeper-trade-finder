@@ -1,5 +1,5 @@
 import { prisma } from "./prisma";
-import { applyPickOwnership, applyRosters } from "./roster-refresh";
+import { addMissingPlayers, applyPickOwnership, applyRosters } from "./roster-refresh";
 import { randomAccessCode } from "./session";
 import {
   defaultPickValue,
@@ -33,51 +33,10 @@ export async function syncLeagueFromSleeper(opts: {
     for (const pid of r.players ?? []) allPlayerIds.add(pid);
   }
 
-  const directory = await fetchAllPlayers();
-  const neededIds = new Set<string>(allPlayerIds);
-  for (const [id, p] of Object.entries(directory)) {
-    if (neededIds.size >= 700) break;
-    if (
-      p.active &&
-      p.position &&
-      ["QB", "RB", "WR", "TE"].includes(p.position) &&
-      !neededIds.has(id)
-    ) {
-      neededIds.add(id);
-    }
-  }
-
-  for (const pid of neededIds) {
-    const p = directory[pid];
-    if (!p) continue;
-    const fullName = playerFullName(p);
-    await prisma.player.upsert({
-      where: { sleeperPlayerId: pid },
-      create: {
-        sleeperPlayerId: pid,
-        fullName,
-        firstName: p.first_name ?? null,
-        lastName: p.last_name ?? null,
-        position: p.position ?? null,
-        nflTeam: p.team ?? null,
-        status: p.status ?? null,
-        age: typeof p.age === "number" ? p.age : null,
-        yearsExp: typeof p.years_exp === "number" ? p.years_exp : null,
-        searchName: normalizeName(fullName),
-      },
-      update: {
-        fullName,
-        firstName: p.first_name ?? null,
-        lastName: p.last_name ?? null,
-        position: p.position ?? null,
-        nflTeam: p.team ?? null,
-        status: p.status ?? null,
-        age: typeof p.age === "number" ? p.age : null,
-        yearsExp: typeof p.years_exp === "number" ? p.years_exp : null,
-        searchName: normalizeName(fullName),
-      },
-    });
-  }
+  // Players are shared across leagues; a fresh import only needs ones we've never seen.
+  const knownPlayers = existingLeagueId ? 0 : await prisma.player.count();
+  if (knownPlayers >= 500) await addMissingPlayers(rosters);
+  else await upsertPlayerDirectory(allPlayerIds);
 
   const league = existingLeagueId
     ? await prisma.league.update({
@@ -124,6 +83,45 @@ export async function syncLeagueFromSleeper(opts: {
   }
 
   return league;
+}
+
+/** Rostered players plus ~700 active skill players, refreshed from Sleeper's directory. */
+async function upsertPlayerDirectory(rosteredIds: Set<string>) {
+  const directory = await fetchAllPlayers();
+  const neededIds = new Set<string>(rosteredIds);
+  for (const [id, p] of Object.entries(directory)) {
+    if (neededIds.size >= 700) break;
+    if (
+      p.active &&
+      p.position &&
+      ["QB", "RB", "WR", "TE"].includes(p.position) &&
+      !neededIds.has(id)
+    ) {
+      neededIds.add(id);
+    }
+  }
+
+  for (const pid of neededIds) {
+    const p = directory[pid];
+    if (!p) continue;
+    const fullName = playerFullName(p);
+    const fields = {
+      fullName,
+      firstName: p.first_name ?? null,
+      lastName: p.last_name ?? null,
+      position: p.position ?? null,
+      nflTeam: p.team ?? null,
+      status: p.status ?? null,
+      age: typeof p.age === "number" ? p.age : null,
+      yearsExp: typeof p.years_exp === "number" ? p.years_exp : null,
+      searchName: normalizeName(fullName),
+    };
+    await prisma.player.upsert({
+      where: { sleeperPlayerId: pid },
+      create: { sleeperPlayerId: pid, ...fields },
+      update: fields,
+    });
+  }
 }
 
 export async function seedPersonalValuesForTeam(

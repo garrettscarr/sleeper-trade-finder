@@ -111,7 +111,7 @@ export async function applyPickOwnership(
 }
 
 /** Add players who joined a roster but aren't in our player table yet. */
-async function addMissingPlayers(rosters: SleeperRoster[]): Promise<number> {
+export async function addMissingPlayers(rosters: SleeperRoster[]): Promise<number> {
   const rostered = new Set<string>();
   for (const r of rosters) for (const id of r.players ?? []) rostered.add(id);
   if (rostered.size === 0) return 0;

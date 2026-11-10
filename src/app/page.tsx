@@ -12,13 +12,13 @@ export default async function HomePage() {
       <div className="hero" style={{ paddingBottom: "1rem" }}>
         <div>
           <p className="pill fair" style={{ marginBottom: "1rem" }}>
-            No accounts · No passwords · Tap your team
+            No accounts · No passwords · Just your Sleeper username
           </p>
           <h1>Trade Finder for Sleeper leagues</h1>
           <p>
-            Open your league&apos;s invite link and tap your team. This device remembers you.
-            The commissioner gets admin automatically by tapping their own team. New phone? Use
-            “Sign in on another device” from the one you already use.
+            Enter your Sleeper username and every league you&apos;re in shows up, ready to go,
+            with your team attached. This device remembers you. The commissioner gets admin
+            automatically.
           </p>
           {session.memberships.length > 0 ? (
             <div style={{ marginTop: "1.25rem" }}>
@@ -30,22 +30,21 @@ export default async function HomePage() {
         </div>
       </div>
 
-      <ContinueOnDevice />
-
       <div className="panel stack">
-        <h2 style={{ margin: 0 }}>No invite link handy? Paste the code</h2>
-        <EnterCodeForm />
-      </div>
-
-      <div className="panel">
-        <h2 style={{ marginTop: 0 }}>Commissioner — set up a league</h2>
-        <p className="muted">
-          Import from Sleeper with your username, then text the <strong>invite link</strong> to
-          your league. You&apos;re attached to your own team and admin right away. The admin
-          code is only a backup.
-        </p>
+        <h2 style={{ margin: 0 }}>Get my leagues</h2>
         <DiscoverLeague />
       </div>
+
+      <ContinueOnDevice />
+
+      <details className="panel">
+        <summary style={{ cursor: "pointer" }}>
+          <strong>Have an invite or admin code instead?</strong>
+        </summary>
+        <div style={{ marginTop: "1rem" }}>
+          <EnterCodeForm />
+        </div>
+      </details>
     </section>
   );
 }
